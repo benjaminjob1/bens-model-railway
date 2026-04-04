@@ -404,8 +404,8 @@ export default function InteractiveTrain({ showControls = true }: InteractiveTra
       // direction — add 180° so the engine faces forward.
       let angle = Math.atan2(dy, dx) * (180 / Math.PI);
       if (isRev) angle += 180;
-      // flipX mirrors the SVG horizontally — flip when going left so train faces correct direction
-      const flipX = (angle > 90 || angle < -90) ? -1 : 1;
+      // flipX mirrors the SVG horizontally — flip when moving left (dx < 0) so train faces forward
+      const flipX = dx < 0 ? -1 : 1;
       const scaleX = svgRect.width / 800;
       const scaleY = svgRect.height / 400;
       const pixelX = point.x * scaleX;
