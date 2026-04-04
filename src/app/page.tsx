@@ -63,8 +63,14 @@ function Nav({ active }: { active: string }) {
   const [scrolled, setScrolled] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const [bannerVisible, setBannerVisible] = useState(true);
-  const whistleRef = useRef<HTMLAudioElement | null>(null);
-  useEffect(() => { whistleRef.current = new Audio("/sounds/train-move.mp3"); whistleRef.current.volume = 0.12; }, []);
+  const navClickRef = useRef<HTMLAudioElement | null>(null);
+  const menuToggleRef = useRef<HTMLAudioElement | null>(null);
+  useEffect(() => {
+    navClickRef.current = new Audio("/sounds/nav-click.mp3");
+    navClickRef.current.volume = 0.3;
+    menuToggleRef.current = new Audio("/sounds/menu-toggle.mp3");
+    menuToggleRef.current.volume = 0.3;
+  }, []);
   useEffect(() => {
     setBannerVisible(!localStorage.getItem("railway-disclaimer-dismissed"));
     const onScroll = () => setScrolled(window.scrollY > 40);
@@ -75,7 +81,8 @@ function Nav({ active }: { active: string }) {
     { id: "home", label: "Home" }, { id: "layout", label: "The Layout" }, { id: "journal", label: "Build Journal" },
     { id: "renders", label: "3D Renders" }, { page: "/real-railways", label: "Real Railways" }, { id: "software", label: "Software & Hardware" },
   ];
-  const playWhistle = () => { if (whistleRef.current) { whistleRef.current.currentTime = 0; whistleRef.current.play().catch(() => {}); } };
+  const playNavClick = () => { if (navClickRef.current) { navClickRef.current.currentTime = 0; navClickRef.current.play().catch(() => {}); } };
+  const playMenuToggle = () => { if (menuToggleRef.current) { menuToggleRef.current.currentTime = 0; menuToggleRef.current.play().catch(() => {}); } };
   return (
     <motion.nav className={`fixed left-0 right-0 z-[9998] transition-all duration-300 ${scrolled ? "nav-blur bg-railway-bg/80 border-b border-railway-border/50" : "bg-transparent"}`} style={{ top: bannerVisible ? "48px" : "0" }}
       initial={{ y: -80 }} animate={{ y: 0 }} transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}>
@@ -83,14 +90,14 @@ function Nav({ active }: { active: string }) {
         <span className="font-heading text-lg font-bold text-railway-accent tracking-wide">Ben&apos;s Model Railway</span>
         <div className="hidden md:flex items-center gap-1">
           {links.map((l) => (
-            <a key={l.label} href={l.page ?? `#${l.id}`} onClick={playWhistle}
+            <a key={l.label} href={l.page ?? `#${l.id}`} onClick={playNavClick}
               className={`relative px-3 py-1.5 text-xs font-medium rounded-full transition-colors duration-200 ${active === l.id ? "text-railway-accent" : "text-railway-muted hover:text-railway-text"}`}>
               {active === l.id && <motion.div layoutId="nav-indicator" className="absolute inset-0 bg-railway-accent/10 border border-railway-accent/30 rounded-full" transition={{ type: "spring", stiffness: 400, damping: 30 }}/>}
               <span className="relative z-10">{l.label}</span>
             </a>
           ))}
         </div>
-        <button className="md:hidden text-railway-muted p-1" onClick={() => setMenuOpen(!menuOpen)}>
+        <button className="md:hidden text-railway-muted p-1" onClick={() => { playMenuToggle(); setMenuOpen(!menuOpen); }}>
           <svg width="22" height="22" viewBox="0 0 22 22" fill="none">{menuOpen ? <path d="M4 4L18 18M18 4L4 18" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/> : <path d="M3 6h16M3 11h16M3 16h16" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>}</svg>
         </button>
       </div>
@@ -99,7 +106,7 @@ function Nav({ active }: { active: string }) {
           className="md:hidden bg-railway-surface border-t border-railway-border overflow-hidden">
           <div className="px-4 py-3 flex flex-col gap-1">
             {links.map((l) => (
-              <a key={l.label} href={l.page ?? `#${l.id}`} onClick={() => { playWhistle(); setMenuOpen(false); }}
+              <a key={l.label} href={l.page ?? `#${l.id}`} onClick={() => { playNavClick(); setMenuOpen(false); }}
                 className={`px-3 py-2 text-sm rounded-lg ${active === l.id ? "bg-railway-accent/10 text-railway-accent" : "text-railway-muted"}`}>{l.label}</a>
             ))}
           </div>
@@ -144,11 +151,11 @@ function Hero() {
           ))}
         </motion.div>
         <motion.div className="flex flex-wrap justify-center gap-4" initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 1.3 }}>
-          <a href="#layout" onClick={() => { const a = new Audio("/sounds/train-move.mp3"); a.volume = 0.15; a.play().catch(() => {}); }}
+          <a href="#layout" onClick={() => { const a = new Audio("/sounds/cta-whistle.mp3"); a.volume = 0.22; a.play().catch(() => {}); }}
             className="relative overflow-hidden btn-shine bg-railway-accent text-railway-bg font-bold px-7 py-3.5 rounded-xl transition-all duration-300 hover:bg-railway-accent-hover hover:shadow-xl hover:shadow-railway-accent/20 active:scale-95 cursor-pointer">
             Explore the Layout
           </a>
-          <a href="/real-railways" onClick={() => { const a = new Audio("/sounds/train-move.mp3"); a.volume = 0.15; a.play().catch(() => {}); }}
+          <a href="/real-railways" onClick={() => { const a = new Audio("/sounds/cta-whistle.mp3"); a.volume = 0.22; a.play().catch(() => {}); }}
             className="border border-railway-border text-railway-muted font-semibold px-7 py-3.5 rounded-xl transition-all duration-300 hover:border-railway-accent/50 hover:text-railway-text hover:bg-railway-accent/5 active:scale-95">
             Real Railways →
           </a>
@@ -415,10 +422,9 @@ function Footer() {
 export default function Home() {
   const [activeSection, setActiveSection] = useState("home");
   useEffect(() => {
-    // Play departure whistle on first page load
-    const audio = new Audio("/sounds/departure.mp3");
-    audio.volume = 0.15;
-    audio.volume = 0.08; audio.play().catch(() => {});
+    // Play station bell on first page load
+    const audio = new Audio("/sounds/page-load.mp3");
+    audio.volume = 0.2; audio.play().catch(() => {});
     const observer = new IntersectionObserver(
       (entries) => { entries.forEach((entry) => { if (entry.isIntersecting) setActiveSection(entry.target.id); }); },
       { threshold: 0.25, rootMargin: "-100px 0px -55% 0px" }
