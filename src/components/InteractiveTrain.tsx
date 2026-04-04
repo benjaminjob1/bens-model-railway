@@ -52,7 +52,7 @@ function makeTerminus(ox: number, oy: number) {
   const parts = [
     { path: `M ${ox - outerRX} ${oy} A ${outerRX} ${outerRY} 0 0 1 ${ox + outerRX} ${oy} A ${outerRX} ${outerRY} 0 0 1 ${ox - outerRX} ${oy}`, trackWidth: 24, type: 'main' as const },
     { path: `M ${ox - outerRX + 50} ${oy} A ${outerRX - 50} ${outerRY - 40} 0 0 1 ${ox + outerRX - 50} ${oy} A ${outerRX - 50} ${outerRY - 40} 0 0 1 ${ox - outerRX + 50} ${oy}`, trackWidth: 17, type: 'main' as const },
-    { path: `M ${ox + 50} ${termY + 30} L ${ox + 50} ${termY - 80} A 70 60 0 0 1 ${ox + 130} ${termY - 140} L ${ox + 130} ${termY - 210}`, trackWidth: 18, type: 'branch' as const },
+    { path: `M ${ox + outerRX} ${oy} L ${ox + outerRX + 50} ${oy - 50} A 70 60 0 0 1 ${ox + outerRX + 130} ${oy - 120} L ${ox + outerRX + 130} ${oy - 210}`, trackWidth: 18, type: 'branch' as const },
     { path: `M ${ox + 130} ${termY - 160} L ${ox + 250} ${termY - 160} L ${ox + 250} ${termY - 100}`, trackWidth: 16, type: 'siding' as const },
     { path: `M ${ox + 130} ${termY - 110} L ${ox + 250} ${termY - 110} L ${ox + 250} ${termY - 55}`, trackWidth: 14, type: 'siding' as const },
     { path: `M ${ox + 250} ${termY - 55} Q ${ox + 300} ${oy - outerRY + 10} ${ox + outerRX - 30} ${oy - 60}`, trackWidth: 15, type: 'main' as const },
@@ -104,8 +104,8 @@ function makeFigure8(ox: number, oy: number) {
   const parts = [
     { path: `M ${ox - rX} ${oy - gap/2} A ${rX} ${rY} 0 0 1 ${ox + rX} ${oy - gap/2} A ${rX} ${rY} 0 0 1 ${ox - rX} ${oy - gap/2}`, trackWidth: 24, type: 'main' as const },
     { path: `M ${ox - rX} ${oy + gap/2} A ${rX} ${rY} 0 0 0 ${ox + rX} ${oy + gap/2} A ${rX} ${rY} 0 0 0 ${ox - rX} ${oy + gap/2}`, trackWidth: 24, type: 'main' as const },
-    { path: `M ${ox - rX} ${oy - gap/2} Q ${ox - rX/2} ${oy} ${ox - rX} ${oy + gap/2}`, trackWidth: 18, type: 'branch' as const },
-    { path: `M ${ox + rX} ${oy - gap/2} Q ${ox + rX/2} ${oy} ${ox + rX} ${oy + gap/2}`, trackWidth: 18, type: 'branch' as const },
+    { path: `M ${ox - rX + gap/2} ${oy - gap/2} Q ${ox - rX/2} ${oy} ${ox - rX + gap/2} ${oy + gap/2}`, trackWidth: 18, type: 'branch' as const },
+    { path: `M ${ox + rX - gap/2} ${oy - gap/2} Q ${ox + rX/2} ${oy} ${ox + rX - gap/2} ${oy + gap/2}`, trackWidth: 18, type: 'branch' as const },
     { path: `M ${rightX + gap/2} ${oy - gap/2} L ${rightX + 80} ${oy - gap/2 - 60} A 80 65 0 0 1 ${rightX + 160} ${oy - gap/2 - 130} L ${rightX + 160} ${oy - gap/2 - 210}`, trackWidth: 17, type: 'branch' as const },
     { path: `M ${leftX - gap/2} ${oy + gap/2} L ${leftX - 80} ${oy + gap/2 + 60} A 80 65 0 0 0 ${leftX - 160} ${oy + gap/2 + 130} L ${leftX - 160} ${oy + gap/2 + 210}`, trackWidth: 17, type: 'branch' as const },
     { path: `M ${rightX + 100} ${oy - gap/2 - 90} L ${rightX + 160} ${oy - gap/2 - 90}`, trackWidth: 13, type: 'siding' as const },
@@ -282,7 +282,7 @@ export default function InteractiveTrain({ showControls = true }: InteractiveTra
   const [trail, setTrail] = useState<Array<{ x: number; y: number; id: number }>>([]);
   const [isDragging, setIsDragging] = useState(false);
   const [trainAngle, setTrainAngle] = useState(0);
-  const [trainScaleX, setTrainScaleX] = useState(1);
+  const [trainScaleX, setTrainScaleX] = useState(-1);
   const [smokeParticles, setSmokeParticles] = useState<Array<{ id: number; x: number; y: number; age: number }>>([]);
   const [activeSignals, setActiveSignals] = useState<Set<string>>(new Set());
   const smokeId = useRef(0);
@@ -488,14 +488,13 @@ export default function InteractiveTrain({ showControls = true }: InteractiveTra
           w.volume = 0.3;
           w.play().catch(() => {});
         }
-        // Spawn smoke particles at chimney position — offset perpendicular to travel direction
-        // Smoke rises roughly opposite to travel (dx, dy) → perpendicular = (-dy, dx) normalized
+        // Spawn smoke at chimney (front of train = ahead of center along travel direction)
+        // SVG rotated 180° internally so chimney faces right in screen space when angle=0
         const rad = (trainAngle * Math.PI) / 180;
-        // Chimney is ~25px behind the train center, and smoke rises perpendicular to travel
-        const smokeDist = 28; // px behind train center
-        const smokeRise = 22; // px above train center (screen space)
-        const smokeX = trainPos.x - Math.cos(rad) * smokeDist;
-        const smokeY = trainPos.y - Math.sin(rad) * smokeDist - smokeRise;
+        const aheadDist = 22;   // px ahead of center toward chimney
+        const smokeRise = 20;   // px above center (smoke rises up in screen space)
+        const smokeX = trainPos.x + Math.cos(rad) * aheadDist;
+        const smokeY = trainPos.y + Math.sin(rad) * aheadDist - smokeRise;
         const newParticles: Array<{ id: number; x: number; y: number; age: number }> = [];
         for (let i = 0; i < 10; i++) {
           newParticles.push({ id: ++smokeId.current, x: smokeX, y: smokeY, age: 0 });
@@ -726,8 +725,8 @@ export default function InteractiveTrain({ showControls = true }: InteractiveTra
               </g>
             ))}
 
-            {/* Signal indicators */}
-            {SIGNAL_POSITIONS.map(sig => {
+            {/* Signal indicators — only shown in default layout (hardcoded positions) */}
+            {trackMode === 'default' && SIGNAL_POSITIONS.map(sig => {
               const active = activeSignals.has(sig.id);
               return (
                 <g key={sig.id} onClick={() => {
@@ -792,8 +791,8 @@ export default function InteractiveTrain({ showControls = true }: InteractiveTra
               transform: `translate(-50%, -50%) rotate(${trainAngle}deg) scaleX(${trainScaleX})`,
             }}
           >
-            <svg viewBox="0 0 70 30" fill="none">
-              {/* Boiler — faces RIGHT */}
+            <svg viewBox="0 0 70 30" fill="none" style={{ transform: 'rotate(180deg)' }}>
+              {/* Boiler — faces LEFT in SVG coords (rotated 180° so at angle=0 in screen space it faces RIGHT) */}
               <ellipse cx="38" cy="17" rx="24" ry="10" fill="url(#engineBoilerR)"/>
               <ellipse cx="50" cy="17" rx="0.8" ry="9" fill="#b8942f" opacity="0.7"/>
               <ellipse cx="42" cy="17" rx="0.8" ry="9" fill="#b8942f" opacity="0.7"/>
