@@ -10,52 +10,235 @@
   body {
     background-color: #0f1117;
     color: #f0f0f0;
+    overflow-x: hidden;
   }
 }
 
-/* Hero grain texture */
-.hero-grain {
-  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.04'/%3E%3C/svg%3E");
+/* ── Animated hero background ── */
+.hero-bg {
+  background: linear-gradient(135deg, #0a0d18 0%, #0f1117 40%, #12151f 70%, #0d1018 100%);
+  position: relative;
 }
 
-/* Scrollbar styling */
+.hero-bg::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(ellipse 80% 50% at 50% 0%, rgba(212, 168, 67, 0.08) 0%, transparent 60%),
+    radial-gradient(ellipse 60% 40% at 80% 80%, rgba(212, 168, 67, 0.04) 0%, transparent 50%);
+  pointer-events: none;
+}
+
+/* Grain texture */
+.hero-grain {
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.03'/%3E%3C/svg%3E");
+}
+
+/* ── Animated track lines (hero decoration) ── */
+@keyframes trackPulse {
+  0%, 100% { opacity: 0.3; }
+  50% { opacity: 0.8; }
+}
+
+.track-line {
+  animation: trackPulse 3s ease-in-out infinite;
+}
+
+.track-line-delay-1 { animation-delay: 0.5s; }
+.track-line-delay-2 { animation-delay: 1s; }
+.track-line-delay-3 { animation-delay: 1.5s; }
+
+/* ── Animated train on track plan ── */
+@keyframes trainMove {
+  0% { offset-distance: 0%; }
+  100% { offset-distance: 100%; }
+}
+
+.train-animated {
+  offset-path: path("M 150 200 Q 150 80 400 80 Q 650 80 650 200 Q 650 320 400 320 Q 150 320 150 200");
+  animation: trainMove 12s linear infinite;
+}
+
+/* ── Glowing pulse for accent elements ── */
+@keyframes glowPulse {
+  0%, 100% {
+    box-shadow: 0 0 0 0 rgba(212, 168, 67, 0);
+    opacity: 1;
+  }
+  50% {
+    box-shadow: 0 0 20px 4px rgba(212, 168, 67, 0.3);
+    opacity: 0.9;
+  }
+}
+
+.glow-pulse {
+  animation: glowPulse 2.5s ease-in-out infinite;
+}
+
+/* ── Float animation ── */
+@keyframes float {
+  0%, 100% { transform: translateY(0px); }
+  50% { transform: translateY(-8px); }
+}
+
+.float {
+  animation: float 4s ease-in-out infinite;
+}
+
+/* ── Signal flash ── */
+@keyframes signalFlash {
+  0%, 45%, 100% { opacity: 1; fill: #d4a843; }
+  50%, 90% { opacity: 0.3; fill: #5a3a00; }
+}
+
+.signal-light {
+  animation: signalFlash 4s ease-in-out infinite;
+}
+
+/* ── Section reveal ── */
+@keyframes sectionReveal {
+  from {
+    opacity: 0;
+    transform: translateY(30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.reveal {
+  animation: sectionReveal 0.7s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+
+/* Stagger children */
+.stagger-children > * {
+  opacity: 0;
+  transform: translateY(20px);
+}
+.stagger-children > *:nth-child(1) { animation: sectionReveal 0.6s 0.05s cubic-bezier(0.22, 1, 0.36, 1) forwards; }
+.stagger-children > *:nth-child(2) { animation: sectionReveal 0.6s 0.1s cubic-bezier(0.22, 1, 0.36, 1) forwards; }
+.stagger-children > *:nth-child(3) { animation: sectionReveal 0.6s 0.15s cubic-bezier(0.22, 1, 0.36, 1) forwards; }
+.stagger-children > *:nth-child(4) { animation: sectionReveal 0.6s 0.2s cubic-bezier(0.22, 1, 0.36, 1) forwards; }
+.stagger-children > *:nth-child(5) { animation: sectionReveal 0.6s 0.25s cubic-bezier(0.22, 1, 0.36, 1) forwards; }
+.stagger-children > *:nth-child(6) { animation: sectionReveal 0.6s 0.3s cubic-bezier(0.22, 1, 0.36, 1) forwards; }
+
+/* ── Card hover effects ── */
+.card-animated {
+  transition: transform 0.3s cubic-bezier(0.22, 1, 0.36, 1),
+              box-shadow 0.3s ease,
+              border-color 0.3s ease;
+}
+
+.card-animated:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4), 0 0 0 1px rgba(212, 168, 67, 0.3);
+  border-color: rgba(212, 168, 67, 0.5);
+}
+
+/* ── Track-style divider ── */
+.track-divider {
+  height: 2px;
+  background: linear-gradient(90deg,
+    transparent 0%,
+    rgba(212, 168, 67, 0.3) 10%,
+    rgba(212, 168, 67, 0.6) 50%,
+    rgba(212, 168, 67, 0.3) 90%,
+    transparent 100%
+  );
+  position: relative;
+}
+
+.track-divider::before {
+  content: "";
+  position: absolute;
+  top: -3px;
+  left: 0;
+  right: 0;
+  height: 8px;
+  background: repeating-linear-gradient(
+    90deg,
+    #2a2d38 0px,
+    #2a2d38 20px,
+    transparent 20px,
+    transparent 28px
+  );
+  border-radius: 2px;
+}
+
+/* ── Station board ── */
+.station-board {
+  background: linear-gradient(180deg, #1a1d26 0%, #0f1117 100%);
+  border: 1px solid rgba(212, 168, 67, 0.3);
+  font-family: 'Courier New', monospace;
+}
+
+/* ── Scrollbar ── */
 ::-webkit-scrollbar {
-  width: 8px;
+  width: 6px;
 }
 ::-webkit-scrollbar-track {
   background: #0f1117;
 }
 ::-webkit-scrollbar-thumb {
   background: #2a2d38;
-  border-radius: 4px;
+  border-radius: 3px;
 }
 ::-webkit-scrollbar-thumb:hover {
   background: #d4a843;
 }
 
-/* Gallery item */
-.gallery-item {
-  cursor: pointer;
-  transition: transform 300ms ease;
-}
-.gallery-item:hover {
-  transform: scale(1.05);
-  box-shadow: 0 0 0 3px #d4a843;
+/* ── Nav blur ── */
+.nav-blur {
+  backdrop-filter: blur(16px) saturate(180%);
+  -webkit-backdrop-filter: blur(16px) saturate(180%);
 }
 
-/* Timeline dot */
-.timeline-dot {
-  width: 12px;
-  height: 12px;
-  border-radius: 9999px;
-  background-color: #d4a843;
-  border: 2px solid #0f1117;
+/* ── Timeline ── */
+.timeline-line {
+  background: linear-gradient(180deg, rgba(212, 168, 67, 0.6) 0%, rgba(212, 168, 67, 0.1) 100%);
+}
+
+/* ── Gallery lightbox ── */
+.lightbox-bg {
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+
+/* ── Button shine effect ── */
+@keyframes btnShine {
+  0% { left: -100%; }
+  100% { left: 200%; }
+}
+
+.btn-shine::after {
+  content: "";
   position: absolute;
-  left: -25px;
-  top: 4px;
+  top: 0;
+  left: -100%;
+  width: 60%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.15), transparent);
+  transform: skewX(-20deg);
 }
 
-/* Nav link active state */
-.nav-link-active {
-  color: #d4a843;
+.btn-shine:hover::after {
+  animation: btnShine 0.6s ease;
+}
+
+/* ── Scroll indicator bounce ── */
+@keyframes scrollBounce {
+  0%, 100% { transform: translateY(0) scaleY(1); }
+  50% { transform: translateY(6px) scaleY(0.9); }
+}
+
+.scroll-indicator-dot {
+  animation: scrollBounce 1.5s ease-in-out infinite;
+}
+
+/* ── Model viewer ambient glow ── */
+model-viewer {
+  --progress-bar-color: #d4a843;
+  --progress-bar-height: 2px;
 }
