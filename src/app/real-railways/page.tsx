@@ -366,17 +366,17 @@ function Nav({ active }: { active: string }) {
   ];
 
   return (
-    <nav className="sticky top-[72px] z-40 bg-railway-bg/95 backdrop-blur-sm border-b border-railway-border mb-10">
-      <div className="max-w-6xl mx-auto px-4">
-        <div className="flex items-center gap-1 overflow-x-auto py-3 scrollbar-hide">
+    <nav className="fixed left-0 right-0 z-40 transition-all duration-300" style={{ top: "0" }}>
+      <div className="max-w-5xl mx-auto px-4 py-3">
+        <div className="bg-railway-bg/80 backdrop-blur-md border border-railway-border/50 rounded-2xl px-2 py-1.5 shadow-2xl flex items-center gap-1 overflow-x-auto scrollbar-hide">
           {links.map((l) => (
             <a
               key={l.id}
               href={`#${l.id}`}
-              className={`whitespace-nowrap text-xs px-3 py-1.5 rounded-full transition-colors ${
+              className={`whitespace-nowrap text-[10px] uppercase tracking-wider px-4 py-2 rounded-xl transition-all duration-300 ${
                 active === l.id
-                  ? "bg-railway-accent text-railway-bg font-semibold"
-                  : "text-railway-muted hover:text-railway-accent"
+                  ? "bg-railway-accent text-railway-bg font-bold shadow-lg shadow-railway-accent/20"
+                  : "text-railway-muted hover:text-railway-accent hover:bg-white/5"
               }`}
             >
               {l.label}

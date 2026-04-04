@@ -102,12 +102,17 @@ function Nav({ active }: { active: string }) {
         </button>
       </div>
       <AnimatePresence>{menuOpen && (
-        <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} exit={{ opacity: 0, height: 0 }}
-          className="md:hidden bg-railway-surface border-t border-railway-border overflow-hidden">
-          <div className="px-4 py-3 flex flex-col gap-1">
+        <motion.div initial={{ opacity: 0, y: -10, scale: 0.98 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, y: -10, scale: 0.98 }}
+          className="absolute top-[calc(100%+12px)] left-4 right-4 md:hidden">
+          <div className="bg-railway-surface/90 backdrop-blur-xl border border-railway-border/50 rounded-3xl p-3 shadow-2xl shadow-black/40 flex flex-col gap-1 ring-1 ring-white/10">
             {links.map((l) => (
               <a key={l.label} href={l.page ?? `#${l.id}`} onClick={() => { playNavClick(); setMenuOpen(false); }}
-                className={`px-3 py-2 text-sm rounded-lg ${active === l.id ? "bg-railway-accent/10 text-railway-accent" : "text-railway-muted"}`}>{l.label}</a>
+                className={`flex items-center justify-between px-4 py-3.5 rounded-2xl transition-all duration-300 group ${active === l.id ? "bg-railway-accent/10 text-railway-accent shadow-inner" : "text-railway-muted hover:bg-white/5 hover:text-railway-text"}`}>
+                <span className="text-sm font-semibold tracking-wide">{l.label}</span>
+                <div className={`w-8 h-8 rounded-full flex items-center justify-center transition-all duration-300 ${active === l.id ? "bg-railway-accent text-railway-bg" : "bg-white/5 text-railway-muted group-hover:bg-railway-accent/20 group-hover:text-railway-accent"}`}>
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+                </div>
+              </a>
             ))}
           </div>
         </motion.div>
