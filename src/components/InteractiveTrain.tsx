@@ -791,8 +791,8 @@ export default function InteractiveTrain({ showControls = true }: InteractiveTra
               transform: `translate(-50%, -50%) rotate(${trainAngle}deg) scaleX(${trainScaleX})`,
             }}
           >
-            <svg viewBox="0 0 70 30" fill="none" style={{ transform: 'rotate(180deg)' }}>
-              {/* Boiler — faces LEFT in SVG coords (rotated 180° so at angle=0 in screen space it faces RIGHT) */}
+            <svg viewBox="0 0 70 30" fill="none">
+              {/* Boiler — faces RIGHT */}
               <ellipse cx="38" cy="17" rx="24" ry="10" fill="url(#engineBoilerR)"/>
               <ellipse cx="50" cy="17" rx="0.8" ry="9" fill="#b8942f" opacity="0.7"/>
               <ellipse cx="42" cy="17" rx="0.8" ry="9" fill="#b8942f" opacity="0.7"/>
