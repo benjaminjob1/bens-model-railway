@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef } from "react";
 import Image from "next/image";
+import InteractiveTrain from "@/components/InteractiveTrain";
 
 const RAILWAY_DATA = {
   cornishMainLine: {
@@ -439,7 +440,12 @@ export default function RealRailways() {
   }, []);
 
   return (
-    <main className="min-h-screen bg-railway-bg">
+    <main className="relative min-h-screen bg-railway-bg overflow-hidden">
+      {/* Background train & track - behind everything */}
+      <div className="absolute inset-0 pointer-events-none">
+        <InteractiveTrain />
+      </div>
+
       {/* Page header */}
       <div className="bg-railway-surface border-b border-railway-border py-16 px-4">
         <div className="max-w-6xl mx-auto">
