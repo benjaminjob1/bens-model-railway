@@ -16,232 +16,208 @@ const TRACK_GAP = Math.round(67 * MM); // 13 units
 // ──────────────────────────────────────────────
 
 // ──────────────────────────────────────────────
-// LAYOUT 1: Double Oval with Passing Loop + Branch
+// LAYOUT 1: Grand Oval with Extended Network
 // ──────────────────────────────────────────────
 function makeDoubleOval(ox: number, oy: number) {
-  const outerRX = 215, outerRY = 90;
-  const innerRX = outerRX - TRACK_GAP * 1.5, innerRY = outerRY - 10;
-  // Branch extends from right side of oval
-  const bx = ox + outerRX, by = oy;
+  const outerRX = 355, outerRY = 165;
+  const midRX = 270, midRY = 120;
+  const brX = ox + outerRX - 20, brY = oy - outerRY + 20;
 
   const parts = [
-    // CLOSED main oval (outer)
-    { path: `M ${ox - outerRX} ${oy} A ${outerRX} ${outerRY} 0 0 1 ${ox + outerRX} ${oy} A ${outerRX} ${outerRY} 0 0 1 ${ox - outerRX} ${oy}`, trackWidth: 22, type: 'main' as const },
-    // CLOSED inner passing loop
-    { path: `M ${ox - innerRX} ${oy} A ${innerRX} ${innerRY} 0 0 1 ${ox + innerRX} ${oy} A ${innerRX} ${innerRY} 0 0 1 ${ox - innerRX} ${oy}`, trackWidth: 16, type: 'main' as const },
-    // SUBSTANTIAL BRANCH — long extension from right side going up and right
-    { path: `M ${bx} ${by} L ${bx + 80} ${by - 20} A 50 40 0 0 1 ${bx + 140} ${by - 55} L ${bx + 140} ${by - 100}`, trackWidth: 15, type: 'branch' as const },
-    // Siding off branch
-    { path: `M ${bx + 90} ${by - 35} L ${bx + 90} ${by - 70}`, trackWidth: 12, type: 'siding' as const },
-    { path: `M ${bx + 115} ${by - 50} L ${bx + 145} ${by - 50}`, trackWidth: 12, type: 'yard' as const },
+    { path: `M ${ox - outerRX} ${oy} A ${outerRX} ${outerRY} 0 0 1 ${ox + outerRX} ${oy} A ${outerRX} ${outerRY} 0 0 1 ${ox - outerRX} ${oy}`, trackWidth: 24, type: 'main' as const },
+    { path: `M ${ox - midRX} ${oy} A ${midRX} ${midRY} 0 0 1 ${ox + midRX} ${oy} A ${midRX} ${midRY} 0 0 1 ${ox - midRX} ${oy}`, trackWidth: 18, type: 'main' as const },
+    { path: `M ${brX} ${brY} L ${brX + 60} ${brY - 60} A 80 65 0 0 1 ${brX + 140} ${brY - 130} L ${brX + 140} ${brY - 200}`, trackWidth: 17, type: 'branch' as const },
+    { path: `M ${ox - outerRX + 20} ${oy + outerRY - 20} L ${ox - outerRX - 40} ${oy + outerRY + 50} A 70 55 0 0 0 ${ox - outerRX - 120} ${oy + outerRY + 100} L ${ox - outerRX - 120} ${oy + outerRY + 180}`, trackWidth: 16, type: 'branch' as const },
+    { path: `M ${brX + 80} ${brY - 100} L ${brX + 140} ${brY - 100}`, trackWidth: 13, type: 'siding' as const },
+    { path: `M ${brX + 110} ${brY - 130} L ${brX + 110} ${brY - 185}`, trackWidth: 12, type: 'yard' as const },
+    { path: `M ${ox - outerRX - 90} ${oy + outerRY + 80} L ${ox - outerRX - 140} ${oy + outerRY + 80}`, trackWidth: 12, type: 'yard' as const },
+    { path: `M ${ox + midRX - 30} ${oy} L ${ox + midRX + 60} ${oy - 30} A 40 35 0 0 1 ${ox + midRX + 110} ${oy - 65}`, trackWidth: 14, type: 'main' as const },
   ];
   const stations = [
-    { x: ox, y: oy - outerRY - 8, label: 'PASSING LOOP' },
-    { x: bx + 70, y: by - 55, label: 'BRANCH HALT' },
+    { x: ox, y: oy - midRY - 8, label: 'CENTRAL STATION' },
+    { x: brX + 70, y: brY - 110, label: 'EAST HALT' },
+    { x: ox - outerRX - 60, y: oy + outerRY + 100, label: 'WEST HALT' },
   ];
-  return { parts, stations, name: "Double Oval + Branch", desc: "Two-track oval with long branch extension", viewBox: "0 0 800 400" };
+  return { parts, stations, name: "Grand Oval Network", desc: "Massive oval filling 90% of screen with extended branch network", viewBox: "0 0 800 400" };
 }
 
 // ──────────────────────────────────────────────
-// LAYOUT 2: Terminus with Approach Loop + Branch
+// LAYOUT 2: Long Main Line with Full-Length Branch
 // ──────────────────────────────────────────────
 function makeTerminus(ox: number, oy: number) {
-  const outerRX = 180, outerRY = 75;
-  // A proper CLOSED approach oval
-  const approachBX = ox - outerRX, approachBY = oy;
-  // Branch from top of approach oval going to terminus area
-  const termX = ox - 220, termY = oy - 30;
+  const outerRX = 370, outerRY = 140;
+  const termY = oy - outerRY + 10;
 
   const parts = [
-    // CLOSED approach oval
-    { path: `M ${ox - outerRX} ${oy} A ${outerRX} ${outerRY} 0 0 1 ${ox + outerRX} ${oy} A ${outerRX} ${outerRY} 0 0 1 ${ox - outerRX} ${oy}`, trackWidth: 20, type: 'main' as const },
-    // Branch: from left of approach oval going to terminus platform
-    { path: `M ${approachBX} ${approachBY} L ${approachBX - 60} ${approachBY - 20} L ${approachBX - 60} ${termY + 10} L ${termX + 60} ${termY + 10}`, trackWidth: 16, type: 'branch' as const },
-    // Terminus platform tracks
-    { path: `M ${termX + 60} ${termY + 10} L ${termX} ${termY + 10} L ${termX} ${termY - 25}`, trackWidth: 16, type: 'siding' as const },
-    { path: `M ${termX + 60} ${termY + 28} L ${termX} ${termY + 28} L ${termX} ${termY + 48}`, trackWidth: 14, type: 'siding' as const },
-    // Return line from terminus back to approach oval
-    { path: `M ${termX} ${termY - 25} Q ${termX + 30} ${termY - 50} ${approachBX} ${approachBY - 50}`, trackWidth: 16, type: 'main' as const },
-    // Second platform track connection
-    { path: `M ${termX} ${termY + 48} Q ${termX + 30} ${termY + 70} ${approachBX} ${approachBY + 50}`, trackWidth: 14, type: 'siding' as const },
+    { path: `M ${ox - outerRX} ${oy} A ${outerRX} ${outerRY} 0 0 1 ${ox + outerRX} ${oy} A ${outerRX} ${outerRY} 0 0 1 ${ox - outerRX} ${oy}`, trackWidth: 24, type: 'main' as const },
+    { path: `M ${ox - outerRX + 50} ${oy} A ${outerRX - 50} ${outerRY - 40} 0 0 1 ${ox + outerRX - 50} ${oy} A ${outerRX - 50} ${outerRY - 40} 0 0 1 ${ox - outerRX + 50} ${oy}`, trackWidth: 17, type: 'main' as const },
+    { path: `M ${ox + 50} ${termY + 30} L ${ox + 50} ${termY - 80} A 70 60 0 0 1 ${ox + 130} ${termY - 140} L ${ox + 130} ${termY - 210}`, trackWidth: 18, type: 'branch' as const },
+    { path: `M ${ox + 130} ${termY - 160} L ${ox + 250} ${termY - 160} L ${ox + 250} ${termY - 100}`, trackWidth: 16, type: 'siding' as const },
+    { path: `M ${ox + 130} ${termY - 110} L ${ox + 250} ${termY - 110} L ${ox + 250} ${termY - 55}`, trackWidth: 14, type: 'siding' as const },
+    { path: `M ${ox + 250} ${termY - 55} Q ${ox + 300} ${oy - outerRY + 10} ${ox + outerRX - 30} ${oy - 60}`, trackWidth: 15, type: 'main' as const },
+    { path: `M ${ox - 30} ${oy + outerRY - 10} L ${ox - 30} ${oy + outerRY + 80} A 60 50 0 0 0 ${ox + 40} ${oy + outerRY + 130}`, trackWidth: 14, type: 'branch' as const },
+    { path: `M ${ox + 170} ${termY - 185} L ${ox + 170} ${termY - 240}`, trackWidth: 12, type: 'yard' as const },
+    { path: `M ${ox + 210} ${termY - 160} L ${ox + 260} ${termY - 160}`, trackWidth: 12, type: 'siding' as const },
   ];
   const stations = [
-    { x: ox, y: oy - outerRY - 8, label: 'APPROACH LOOP' },
-    { x: (termX + termX + 60) / 2, y: termY + 20, label: 'TERMINUS' },
+    { x: ox, y: oy - outerRY - 10, label: 'MAIN LINE' },
+    { x: ox + 190, y: termY - 135, label: 'TERMINUS' },
   ];
-  return { parts, stations, name: "Terminus Station", desc: "Closed approach loop with terminus platforms and bay branch", viewBox: "0 0 800 400" };
+  return { parts, stations, name: "Terminus & Branch", desc: "Full-width main line with extended terminus branch", viewBox: "0 0 800 400" };
 }
 
 // ──────────────────────────────────────────────
-// LAYOUT 3: Junction with Dual Branches
+// LAYOUT 3: Dual Oval Junction
 // ──────────────────────────────────────────────
 function makeJunction(ox: number, oy: number) {
-  const outerRX = 190, outerRY = 80;
-  const rbx = ox + outerRX, rby = oy;
-  const lbx = ox - outerRX, lby = oy;
+  const outerRX = 330, outerRY = 155;
+  const innerRX = 230, innerRY = 100;
+  const rbx = ox + outerRX - 30, rby = oy;
+  const lbx = ox - outerRX + 30, lby = oy;
 
   const parts = [
-    // CLOSED main oval
-    { path: `M ${ox - outerRX} ${oy} A ${outerRX} ${outerRY} 0 0 1 ${ox + outerRX} ${oy} A ${outerRX} ${outerRY} 0 0 1 ${ox - outerRX} ${oy}`, trackWidth: 22, type: 'main' as const },
-    // Inner passing loop
-    { path: `M ${ox - outerRX + TRACK_GAP} ${oy} A ${outerRX - TRACK_GAP} ${outerRY - 8} 0 0 1 ${ox + outerRX - TRACK_GAP} ${oy} A ${outerRX - TRACK_GAP} ${outerRY - 8} 0 0 1 ${ox - outerRX + TRACK_GAP} ${oy}`, trackWidth: 16, type: 'main' as const },
-    // BRANCH A: long extension from right side going up-right
-    { path: `M ${rbx} ${rby} L ${rbx + 70} ${rby - 30} A 60 45 0 0 1 ${rbx + 140} ${rby - 70} L ${rbx + 140} ${rby - 115}`, trackWidth: 15, type: 'branch' as const },
-    // BRANCH B: extension from left side going down-left
-    { path: `M ${lbx} ${lby} L ${lbx - 70} ${lby + 30} A 60 45 0 0 0 ${lbx - 140} ${lby + 70} L ${lbx - 140} ${lby + 115}`, trackWidth: 15, type: 'branch' as const },
-    // Sidings off branch A
-    { path: `M ${rbx + 100} ${rby - 50} L ${rbx + 100} ${rby - 80}`, trackWidth: 12, type: 'siding' as const },
-    { path: `M ${rbx + 125} ${rby - 65} L ${rbx + 155} ${rby - 65}`, trackWidth: 12, type: 'yard' as const },
-    // Siding off branch B
-    { path: `M ${lbx - 100} ${lby + 50} L ${lbx - 100} ${lby + 80}`, trackWidth: 12, type: 'siding' as const },
+    { path: `M ${ox - outerRX} ${oy} A ${outerRX} ${outerRY} 0 0 1 ${ox + outerRX} ${oy} A ${outerRX} ${outerRY} 0 0 1 ${ox - outerRX} ${oy}`, trackWidth: 26, type: 'main' as const },
+    { path: `M ${ox - innerRX} ${oy} A ${innerRX} ${innerRY} 0 0 1 ${ox + innerRX} ${oy} A ${innerRX} ${innerRY} 0 0 1 ${ox - innerRX} ${oy}`, trackWidth: 18, type: 'main' as const },
+    { path: `M ${rbx} ${rby} L ${rbx + 100} ${rby - 40} A 90 75 0 0 1 ${rbx + 190} ${rby - 120} L ${rbx + 190} ${rby - 220}`, trackWidth: 18, type: 'branch' as const },
+    { path: `M ${lbx} ${lby} L ${lbx - 100} ${lby + 40} A 90 75 0 0 0 ${lbx - 190} ${lby + 120} L ${lbx - 190} ${lby + 220}`, trackWidth: 18, type: 'branch' as const },
+    { path: `M ${rbx + 120} ${rby - 80} L ${rbx + 180} ${rby - 80}`, trackWidth: 13, type: 'siding' as const },
+    { path: `M ${rbx + 150} ${rby - 120} L ${rbx + 150} ${rby - 195}`, trackWidth: 13, type: 'yard' as const },
+    { path: `M ${lbx - 120} ${lby + 80} L ${lbx - 180} ${lby + 80}`, trackWidth: 13, type: 'siding' as const },
+    { path: `M ${lbx - 150} ${lby + 120} L ${lbx - 150} ${lby + 195}`, trackWidth: 13, type: 'yard' as const },
   ];
   const stations = [
-    { x: ox, y: oy - outerRY - 8, label: 'MAIN JUNCTION' },
-    { x: rbx + 70, y: rby - 60, label: 'EAST BRANCH' },
-    { x: lbx - 70, y: lby + 60, label: 'WEST BRANCH' },
+    { x: ox, y: oy - innerRY - 10, label: 'CENTRAL JUNCTION' },
+    { x: rbx + 95, y: rby - 115, label: 'EASTERN BRANCH' },
+    { x: lbx - 95, y: lby + 115, label: 'WESTERN BRANCH' },
   ];
-  return { parts, stations, name: "Junction Station", desc: "Main line with two substantial branch extensions", viewBox: "0 0 800 400" };
+  return { parts, stations, name: "Dual Junction Network", desc: "Massive dual-branch layout spanning the full screen", viewBox: "0 0 800 400" };
 }
 
 // ──────────────────────────────────────────────
-// LAYOUT 4: Figure 8 with Extended Branches
+// LAYOUT 4: Complex Figure-8
 // ──────────────────────────────────────────────
 function makeFigure8(ox: number, oy: number) {
-  const rX = 130, rY = 62, gap = 38;
-  const rightX = ox + rX, leftX = ox - rX;
+  const rX = 220, rY = 135, gap = 55;
+  const rightX = ox + rX - gap/2, leftX = ox - rX + gap/2;
 
   const parts = [
-    // CLOSED upper oval
-    { path: `M ${ox - rX} ${oy - gap/2} A ${rX} ${rY} 0 0 1 ${ox + rX} ${oy - gap/2} A ${rX} ${rY} 0 0 1 ${ox - rX} ${oy - gap/2}`, trackWidth: 20, type: 'main' as const },
-    // CLOSED lower oval
-    { path: `M ${ox - rX} ${oy + gap/2} A ${rX} ${rY} 0 0 0 ${ox + rX} ${oy + gap/2} A ${rX} ${rY} 0 0 0 ${ox - rX} ${oy + gap/2}`, trackWidth: 20, type: 'main' as const },
-    // Cross connectors (figure-8 crossover)
-    { path: `M ${ox - rX} ${oy - gap/2} Q ${ox - rX/2} ${oy} ${ox - rX} ${oy + gap/2}`, trackWidth: 14, type: 'branch' as const },
-    { path: `M ${ox + rX} ${oy - gap/2} Q ${ox + rX/2} ${oy} ${ox + rX} ${oy + gap/2}`, trackWidth: 14, type: 'branch' as const },
-    // Extended branch from upper-right going up
-    { path: `M ${rightX} ${oy - gap/2} L ${rightX + 80} ${oy - gap/2 - 30} A 50 40 0 0 1 ${rightX + 130} ${oy - gap/2 - 70}`, trackWidth: 14, type: 'branch' as const },
-    // Extended branch from lower-left going down
-    { path: `M ${leftX} ${oy + gap/2} L ${leftX - 80} ${oy + gap/2 + 30} A 50 40 0 0 0 ${leftX - 130} ${oy + gap/2 + 70}`, trackWidth: 14, type: 'branch' as const },
-    // Sidings
-    { path: `M ${rightX + 100} ${oy - gap/2 - 50} L ${rightX + 130} ${oy - gap/2 - 50}`, trackWidth: 11, type: 'siding' as const },
-    { path: `M ${leftX - 100} ${oy + gap/2 + 50} L ${leftX - 130} ${oy + gap/2 + 50}`, trackWidth: 11, type: 'siding' as const },
+    { path: `M ${ox - rX} ${oy - gap/2} A ${rX} ${rY} 0 0 1 ${ox + rX} ${oy - gap/2} A ${rX} ${rY} 0 0 1 ${ox - rX} ${oy - gap/2}`, trackWidth: 24, type: 'main' as const },
+    { path: `M ${ox - rX} ${oy + gap/2} A ${rX} ${rY} 0 0 0 ${ox + rX} ${oy + gap/2} A ${rX} ${rY} 0 0 0 ${ox - rX} ${oy + gap/2}`, trackWidth: 24, type: 'main' as const },
+    { path: `M ${ox - rX} ${oy - gap/2} Q ${ox - rX/2} ${oy} ${ox - rX} ${oy + gap/2}`, trackWidth: 18, type: 'branch' as const },
+    { path: `M ${ox + rX} ${oy - gap/2} Q ${ox + rX/2} ${oy} ${ox + rX} ${oy + gap/2}`, trackWidth: 18, type: 'branch' as const },
+    { path: `M ${rightX + gap/2} ${oy - gap/2} L ${rightX + 80} ${oy - gap/2 - 60} A 80 65 0 0 1 ${rightX + 160} ${oy - gap/2 - 130} L ${rightX + 160} ${oy - gap/2 - 210}`, trackWidth: 17, type: 'branch' as const },
+    { path: `M ${leftX - gap/2} ${oy + gap/2} L ${leftX - 80} ${oy + gap/2 + 60} A 80 65 0 0 0 ${leftX - 160} ${oy + gap/2 + 130} L ${leftX - 160} ${oy + gap/2 + 210}`, trackWidth: 17, type: 'branch' as const },
+    { path: `M ${rightX + 100} ${oy - gap/2 - 90} L ${rightX + 160} ${oy - gap/2 - 90}`, trackWidth: 13, type: 'siding' as const },
+    { path: `M ${leftX - 100} ${oy + gap/2 + 90} L ${leftX - 160} ${oy + gap/2 + 90}`, trackWidth: 13, type: 'siding' as const },
+    { path: `M ${ox} ${oy - gap/2} L ${ox} ${oy - gap/2 - 30}`, trackWidth: 14, type: 'main' as const },
   ];
   const stations = [
-    { x: ox, y: oy - rY - gap/2 - 8, label: 'NORTH JUNCTION' },
-    { x: ox, y: oy + rY + gap/2 + 8, label: 'SOUTH JUNCTION' },
+    { x: ox - 80, y: oy - rY - gap/2 + 5, label: 'NORTH STATION' },
+    { x: ox + 80, y: oy + rY + gap/2 - 5, label: 'SOUTH STATION' },
+    { x: rightX + 80, y: oy - gap/2 - 115, label: 'EAST BRANCH' },
   ];
-  return { parts, stations, name: "Figure 8", desc: "Two ovals with crossover tracks and extended branches", viewBox: "0 0 800 400" };
+  return { parts, stations, name: "Figure-8 Express", desc: "Huge interconnected figure-8 spanning the full screen", viewBox: "0 0 800 400" };
 }
 
 // ──────────────────────────────────────────────
-// LAYOUT 5: Depot & Yard with Branch
+// LAYOUT 5: Depot & Yard Complex
 // ──────────────────────────────────────────────
 function makeDepot(ox: number, oy: number) {
-  const outerRX = 200, outerRY = 85;
-  const branchX = ox, branchY = oy - outerRY;
+  const outerRX = 350, outerRY = 160;
+  const brX = ox, brY = oy - outerRY + 20;
 
   const parts = [
-    // CLOSED main oval
-    { path: `M ${ox - outerRX} ${oy} A ${outerRX} ${outerRY} 0 0 1 ${ox + outerRX} ${oy} A ${outerRX} ${outerRY} 0 0 1 ${ox - outerRX} ${oy}`, trackWidth: 22, type: 'main' as const },
-    // Inner oval
-    { path: `M ${ox - outerRX + TRACK_GAP} ${oy} A ${outerRX - TRACK_GAP} ${outerRY - 8} 0 0 1 ${ox + outerRX - TRACK_GAP} ${oy} A ${outerRX - TRACK_GAP} ${outerRY - 8} 0 0 1 ${ox - outerRX + TRACK_GAP} ${oy}`, trackWidth: 16, type: 'main' as const },
-    // SUBSTANTIAL BRANCH: from top going up to engine shed area
-    { path: `M ${branchX} ${branchY} L ${branchX} ${branchY - 50} A 40 35 0 0 1 ${branchX + 50} ${branchY - 85} L ${branchX + 50} ${branchY - 130}`, trackWidth: 15, type: 'branch' as const },
-    // Shed roads branching off the main branch
-    { path: `M ${branchX + 50} ${branchY - 80} L ${branchX + 90} ${branchY - 100} L ${branchX + 90} ${branchY - 145}`, trackWidth: 13, type: 'yard' as const },
-    { path: `M ${branchX + 50} ${branchY - 95} L ${branchX + 90} ${branchY - 80} L ${branchX + 90} ${branchY - 50}`, trackWidth: 13, type: 'yard' as const },
-    // Extra siding
-    { path: `M ${branchX} ${branchY - 30} L ${branchX - 50} ${branchY - 60}`, trackWidth: 12, type: 'siding' as const },
+    { path: `M ${ox - outerRX} ${oy} A ${outerRX} ${outerRY} 0 0 1 ${ox + outerRX} ${oy} A ${outerRX} ${outerRY} 0 0 1 ${ox - outerRX} ${oy}`, trackWidth: 26, type: 'main' as const },
+    { path: `M ${ox - outerRX + 45} ${oy} A ${outerRX - 45} ${outerRY - 35} 0 0 1 ${ox + outerRX - 45} ${oy} A ${outerRX - 45} ${outerRY - 35} 0 0 1 ${ox - outerRX + 45} ${oy}`, trackWidth: 18, type: 'main' as const },
+    { path: `M ${brX} ${brY} L ${brX} ${brY - 80} A 70 60 0 0 1 ${brX + 80} ${brY - 150} L ${brX + 80} ${brY - 250}`, trackWidth: 20, type: 'branch' as const },
+    { path: `M ${brX + 80} ${brY - 160} L ${brX + 170} ${brY - 180} L ${brX + 170} ${brY - 240}`, trackWidth: 16, type: 'yard' as const },
+    { path: `M ${brX + 80} ${brY - 130} L ${brX + 170} ${brY - 110} L ${brX + 170} ${brY - 55}`, trackWidth: 16, type: 'yard' as const },
+    { path: `M ${brX + 80} ${brY - 195} L ${brX + 170} ${brY - 210}`, trackWidth: 14, type: 'siding' as const },
+    { path: `M ${ox - 50} ${oy + outerRY - 20} L ${ox - 50} ${oy + outerRY + 80} A 60 50 0 0 0 ${ox + 30} ${oy + outerRY + 130}`, trackWidth: 15, type: 'branch' as const },
+    { path: `M ${ox - 50} ${oy + outerRY + 55} L ${ox - 140} ${oy + outerRY + 55}`, trackWidth: 13, type: 'yard' as const },
+    { path: `M ${ox + 30} ${oy + outerRY + 105} L ${ox + 30} ${oy + outerRY + 160}`, trackWidth: 13, type: 'siding' as const },
   ];
   const stations = [
-    { x: ox, y: oy - outerRY - 8, label: 'MAIN LINE' },
-    { x: branchX + 45, y: branchY - 105, label: 'ENGINE SHED' },
+    { x: ox, y: oy - outerRY - 10, label: 'MAIN DEADLINE' },
+    { x: brX + 125, y: brY - 155, label: 'ENGINE SHED' },
+    { x: ox - 95, y: oy + outerRY + 75, label: 'FREIGHT YARD' },
   ];
-  return { parts, stations, name: "Depot & Yard", desc: "Main line with substantial branch to engine shed and yard", viewBox: "0 0 800 400" };
+  return { parts, stations, name: "Depot Complex", desc: "Massive depot with full-length engine shed roads", viewBox: "0 0 800 400" };
 }
 
 // ──────────────────────────────────────────────
-// LAYOUT 6: Triple Track Main Line
+// LAYOUT 6: Triple Track Wide Screen
 // ──────────────────────────────────────────────
 function makeTriple(ox: number, oy: number) {
-  const outerRX = 210, outerRY = 88, gap = 12;
+  const outerRX = 360, outerRY = 160, gap = 16;
 
   const parts = [
-    // CLOSED outer oval
-    { path: `M ${ox - outerRX} ${oy} A ${outerRX} ${outerRY} 0 0 1 ${ox + outerRX} ${oy} A ${outerRX} ${outerRY} 0 0 1 ${ox - outerRX} ${oy}`, trackWidth: 22, type: 'main' as const },
-    // CLOSED middle oval
-    { path: `M ${ox - outerRX + gap} ${oy} A ${outerRX - gap} ${outerRY - gap} 0 0 1 ${ox + outerRX - gap} ${oy} A ${outerRX - gap} ${outerRY - gap} 0 0 1 ${ox - outerRX + gap} ${oy}`, trackWidth: 17, type: 'main' as const },
-    // CLOSED inner oval (branch-type so train visits it as a loop)
-    { path: `M ${ox - outerRX + gap*2} ${oy} A ${outerRX - gap*2} ${outerRY - gap*2} 0 0 1 ${ox + outerRX - gap*2} ${oy} A ${outerRX - gap*2} ${outerRY - gap*2} 0 0 1 ${ox - outerRX + gap*2} ${oy}`, trackWidth: 14, type: 'branch' as const },
-    // Long branch from right end going up and around
-    { path: `M ${ox + outerRX} ${oy} L ${ox + outerRX + 60} ${oy - 20} A 70 55 0 0 1 ${ox + outerRX + 130} ${oy - 80} L ${ox + outerRX + 130} ${oy - 140}`, trackWidth: 14, type: 'branch' as const },
-    // Siding off the long branch
-    { path: `M ${ox + outerRX + 90} ${oy - 50} L ${ox + outerRX + 120} ${oy - 50}`, trackWidth: 11, type: 'siding' as const },
-    // Short crossover
-    { path: `M ${ox - outerRX} ${oy} L ${ox - outerRX + gap*2} ${oy + 18}`, trackWidth: 11, type: 'branch' as const },
+    { path: `M ${ox - outerRX} ${oy} A ${outerRX} ${outerRY} 0 0 1 ${ox + outerRX} ${oy} A ${outerRX} ${outerRY} 0 0 1 ${ox - outerRX} ${oy}`, trackWidth: 26, type: 'main' as const },
+    { path: `M ${ox - outerRX + gap} ${oy} A ${outerRX - gap} ${outerRY - gap} 0 0 1 ${ox + outerRX - gap} ${oy} A ${outerRX - gap} ${outerRY - gap} 0 0 1 ${ox - outerRX + gap} ${oy}`, trackWidth: 20, type: 'main' as const },
+    { path: `M ${ox - outerRX + gap*2} ${oy} A ${outerRX - gap*2} ${outerRY - gap*2} 0 0 1 ${ox + outerRX - gap*2} ${oy} A ${outerRX - gap*2} ${outerRY - gap*2} 0 0 1 ${ox - outerRX + gap*2} ${oy}`, trackWidth: 15, type: 'branch' as const },
+    { path: `M ${ox + outerRX - 30} ${oy - outerRY + 20} L ${ox + outerRX + 50} ${oy - outerRY - 40} A 70 60 0 0 1 ${ox + outerRX + 120} ${oy - outerRY - 100} L ${ox + outerRX + 120} ${oy - outerRY - 180}`, trackWidth: 18, type: 'branch' as const },
+    { path: `M ${ox - outerRX + 30} ${oy + outerRY - 20} L ${ox - outerRX - 50} ${oy + outerRY + 40} A 70 60 0 0 0 ${ox - outerRX - 120} ${oy + outerRY + 100} L ${ox - outerRX - 120} ${oy + outerRY + 180}`, trackWidth: 18, type: 'branch' as const },
+    { path: `M ${ox + outerRX + 70} ${oy - outerRY - 80} L ${ox + outerRX + 140} ${oy - outerRY - 80}`, trackWidth: 13, type: 'siding' as const },
+    { path: `M ${ox - outerRX - 70} ${oy + outerRY + 80} L ${ox - outerRX - 140} ${oy + outerRY + 80}`, trackWidth: 13, type: 'siding' as const },
   ];
   const stations = [
-    { x: ox, y: oy - outerRY - 6, label: 'TRIPLE TRACK MAIN' },
-    { x: ox + outerRX + 65, y: oy - 75, label: 'BRANCH' },
+    { x: ox, y: oy - outerRY - 10, label: 'TRIPLE MAIN' },
+    { x: ox + outerRX + 60, y: oy - outerRY - 95, label: 'NORTH BRANCH' },
+    { x: ox - outerRX - 60, y: oy + outerRY + 95, label: 'SOUTH BRANCH' },
   ];
-  return { parts, stations, name: "Triple Track", desc: "Three parallel tracks with extended branch line", viewBox: "0 0 800 400" };
+  return { parts, stations, name: "Triple Track Express", desc: "Three parallel tracks with full-length branch extensions", viewBox: "0 0 800 400" };
 }
 
 // ──────────────────────────────────────────────
-// LAYOUT 7: Dog-Bone with Branch Extension
+// LAYOUT 7: Dog-Bone Wide Scenic Layout
 // ──────────────────────────────────────────────
 function makeDogBone(ox: number, oy: number) {
-  const endR = 110, straight = 265;
+  const endR = 160, straight = 380;
   const leftEndX = ox - straight/2 - endR, rightEndX = ox + straight/2 + endR;
 
   const parts = [
-    // CLOSED dog-bone main track
-    { path: `M ${leftEndX} ${oy} A ${endR} ${endR * 0.75} 0 0 1 ${ox + straight/2} ${oy} A ${endR} ${endR * 0.75} 0 0 1 ${leftEndX} ${oy}`, trackWidth: 22, type: 'main' as const },
-    // Inner dog-bone
-    { path: `M ${leftEndX + TRACK_GAP} ${oy} A ${endR - TRACK_GAP} ${endR * 0.75 - 8} 0 0 1 ${ox + straight/2 - TRACK_GAP} ${oy} A ${endR - TRACK_GAP} ${endR * 0.75 - 8} 0 0 1 ${leftEndX + TRACK_GAP} ${oy}`, trackWidth: 16, type: 'main' as const },
-    // SUBSTANTIAL BRANCH from right end going up
-    { path: `M ${rightEndX} ${oy} L ${rightEndX + 80} ${oy - 30} A 60 50 0 0 1 ${rightEndX + 140} ${oy - 80} L ${rightEndX + 140} ${oy - 130}`, trackWidth: 15, type: 'branch' as const },
-    // Long siding along the straight section
-    { path: `M ${ox - 40} ${oy - endR * 0.75 + 5} L ${ox + 80} ${oy - endR * 0.75 + 5}`, trackWidth: 12, type: 'siding' as const },
-    // Branch from left end going down
-    { path: `M ${leftEndX} ${oy} L ${leftEndX - 60} ${oy + 30} A 50 40 0 0 0 ${leftEndX - 110} ${oy + 70}`, trackWidth: 14, type: 'branch' as const },
-    // Siding off left branch
-    { path: `M ${leftEndX - 80} ${oy + 50} L ${leftEndX - 80} ${oy + 90}`, trackWidth: 12, type: 'yard' as const },
+    { path: `M ${leftEndX} ${oy} A ${endR} ${endR * 0.72} 0 0 1 ${ox + straight/2} ${oy} A ${endR} ${endR * 0.72} 0 0 1 ${leftEndX} ${oy}`, trackWidth: 26, type: 'main' as const },
+    { path: `M ${leftEndX + 40} ${oy} A ${endR - 40} ${endR * 0.72 - 25} 0 0 1 ${ox + straight/2 - 40} ${oy} A ${endR - 40} ${endR * 0.72 - 25} 0 0 1 ${leftEndX + 40} ${oy}`, trackWidth: 18, type: 'main' as const },
+    { path: `M ${rightEndX} ${oy} L ${rightEndX + 80} ${oy - 50} A 90 75 0 0 1 ${rightEndX + 170} ${oy - 130} L ${rightEndX + 170} ${oy - 210}`, trackWidth: 18, type: 'branch' as const },
+    { path: `M ${leftEndX} ${oy} L ${leftEndX - 80} ${oy + 50} A 90 75 0 0 0 ${leftEndX - 170} ${oy + 130} L ${leftEndX - 170} ${oy + 210}`, trackWidth: 18, type: 'branch' as const },
+    { path: `M ${rightEndX + 100} ${oy - 90} L ${rightEndX + 180} ${oy - 90}`, trackWidth: 14, type: 'siding' as const },
+    { path: `M ${rightEndX + 140} ${oy - 130} L ${rightEndX + 140} ${oy - 190}`, trackWidth: 13, type: 'yard' as const },
+    { path: `M ${leftEndX - 100} ${oy + 90} L ${leftEndX - 180} ${oy + 90}`, trackWidth: 14, type: 'siding' as const },
+    { path: `M ${leftEndX - 140} ${oy + 130} L ${leftEndX - 140} ${oy + 190}`, trackWidth: 13, type: 'yard' as const },
+    { path: `M ${ox} ${oy - endR * 0.72 + 10} L ${ox + 60} ${oy - endR * 0.72 - 40} A 50 40 0 0 1 ${ox + 110} ${oy - endR * 0.72 - 80}`, trackWidth: 14, type: 'main' as const },
   ];
   const stations = [
-    { x: ox, y: oy - endR * 0.75 - 8, label: 'DOG-BONE MAIN' },
-    { x: rightEndX + 70, y: oy - 65, label: 'EAST BRANCH' },
-    { x: leftEndX - 55, y: oy + 55, label: 'WEST BRANCH' },
+    { x: ox - 100, y: oy - endR * 0.72 - 10, label: 'MAIN LINE' },
+    { x: rightEndX + 85, y: oy - 110, label: 'EASTERN BRANCH' },
+    { x: leftEndX - 85, y: oy + 110, label: 'WESTERN BRANCH' },
   ];
-  return { parts, stations, name: "Dog-Bone", desc: "Long straights with large-radius ends and substantial branch extensions", viewBox: "0 0 800 400" };
+  return { parts, stations, name: "Dog-Bone Express", desc: "Ultra-wide dog-bone layout with long branch extensions", viewBox: "0 0 800 400" };
 }
 
 // ──────────────────────────────────────────────
-// LAYOUT 8: Heritage / Industrial with Real Branch
+// LAYOUT 8: Heritage Complex
 // ──────────────────────────────────────────────
 function makeHeritage(ox: number, oy: number) {
-  const tR = 85;
-  const branchX = ox + tR, branchY = oy - tR * 0.65;
+  const outerRX = 310, outerRY = 155;
+  const brX = ox + outerRX - 40, brY = oy - outerRY + 30;
 
   const parts = [
-    // CLOSED main oval (heritage tight radius)
-    { path: `M ${ox - tR} ${oy} A ${tR} ${tR * 0.65} 0 0 1 ${ox + tR} ${oy} A ${tR} ${tR * 0.65} 0 0 1 ${ox - tR} ${oy}`, trackWidth: 20, type: 'main' as const },
-    // Inner heritage loop
-    { path: `M ${ox - tR + TRACK_GAP} ${oy} A ${tR - TRACK_GAP} ${tR * 0.65 - 6} 0 0 1 ${ox + tR - TRACK_GAP} ${oy} A ${tR - TRACK_GAP} ${tR * 0.65 - 6} 0 0 1 ${ox - tR + TRACK_GAP} ${oy}`, trackWidth: 14, type: 'main' as const },
-    // SUBSTANTIAL BRANCH: heritage line going up and over
-    { path: `M ${branchX} ${branchY} L ${branchX + 50} ${branchY - 30} A 55 45 0 0 1 ${branchX + 110} ${branchY - 65} L ${branchX + 110} ${branchY - 115}`, trackWidth: 14, type: 'branch' as const },
-    // Platform halt on main line
-    { path: `M ${ox - 20} ${oy - tR * 0.65 + 5} L ${ox + 50} ${oy - tR * 0.65 + 5}`, trackWidth: 13, type: 'main' as const },
-    // Branch terminus siding
-    { path: `M ${branchX + 110} ${branchY - 80} L ${branchX + 150} ${branchY - 80} L ${branchX + 150} ${branchY - 55}`, trackWidth: 13, type: 'siding' as const },
-    // Industrial spur
-    { path: `M ${branchX + 70} ${branchY - 48} L ${branchX + 70} ${branchY - 20}`, trackWidth: 11, type: 'yard' as const },
+    { path: `M ${ox - outerRX} ${oy} A ${outerRX} ${outerRY} 0 0 1 ${ox + outerRX} ${oy} A ${outerRX} ${outerRY} 0 0 1 ${ox - outerRX} ${oy}`, trackWidth: 26, type: 'main' as const },
+    { path: `M ${ox - outerRX + 45} ${oy} A ${outerRX - 45} ${outerRY - 40} 0 0 1 ${ox + outerRX - 45} ${oy} A ${outerRX - 45} ${outerRY - 40} 0 0 1 ${ox - outerRX + 45} ${oy}`, trackWidth: 18, type: 'main' as const },
+    { path: `M ${brX} ${brY} L ${brX + 70} ${brY - 50} A 90 75 0 0 1 ${brX + 160} ${brY - 130} L ${brX + 160} ${brY - 220}`, trackWidth: 18, type: 'branch' as const },
+    { path: `M ${ox - outerRX + 40} ${oy + outerRY - 30} L ${ox - outerRX - 40} ${oy + outerRY + 50} A 80 65 0 0 0 ${ox - outerRX - 120} ${oy + outerRY + 115} L ${ox - outerRX - 120} ${oy + outerRY + 195}`, trackWidth: 16, type: 'branch' as const },
+    { path: `M ${ox - 80} ${oy - outerRY + 10} L ${ox + 80} ${oy - outerRY + 10}`, trackWidth: 16, type: 'main' as const },
+    { path: `M ${brX + 60} ${brY - 60} L ${brX + 120} ${brY - 60}`, trackWidth: 14, type: 'branch' as const },
+    { path: `M ${brX + 160} ${brY - 120} L ${brX + 220} ${brY - 120} L ${brX + 220} ${brY - 80}`, trackWidth: 14, type: 'siding' as const },
+    { path: `M ${ox - outerRX - 80} ${oy + outerRY + 80} L ${ox - outerRX - 150} ${oy + outerRY + 80}`, trackWidth: 13, type: 'siding' as const },
+    { path: `M ${ox - outerRX - 120} ${oy + outerRY + 120} L ${ox - outerRX - 120} ${oy + outerRY + 175}`, trackWidth: 13, type: 'yard' as const },
   ];
   const stations = [
-    { x: ox + 15, y: oy - tR * 0.65 - 5, label: 'HERITAGE HALT' },
-    { x: branchX + 55, y: branchY - 50, label: 'BRANCH' },
+    { x: ox, y: oy - outerRY - 10, label: 'HERITAGE MAIN' },
+    { x: brX + 80, y: brY - 115, label: 'BRANCH HALT' },
+    { x: ox - outerRX - 95, y: oy + outerRY + 105, label: 'VALLEY BRANCH' },
   ];
-  return { parts, stations, name: "Heritage Branch", desc: "Tight-radius oval with substantial heritage branch line", viewBox: "0 0 800 400" };
+  return { parts, stations, name: "Heritage Network", desc: "Large heritage layout with dual branch extensions", viewBox: "0 0 800 400" };
 }
 
 
