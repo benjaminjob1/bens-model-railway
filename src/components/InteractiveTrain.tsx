@@ -373,51 +373,59 @@ export default function InteractiveTrain() {
         </button>
       </div>
 
-      {/* Track path - behind content (z-index: 0) */}
+      {/* Track path - behind content */}
       <div className="track-container">
         <svg viewBox={track.viewBox} className="w-full h-full">
-          {/* Main oval track - ballast/sleepers (dark) */}
-          <path d={track.mainPath} fill="none" stroke="#1a1d28" strokeWidth="26" strokeLinecap="round" strokeLinejoin="round"/>
+          {/* Glow filter for golden rail */}
+          <defs>
+            <filter id="railGlow" x="-50%" y="-50%" width="200%" height="200%">
+              <feGaussianBlur stdDeviation="3" result="blur"/>
+              <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+            </filter>
+          </defs>
+          
+          {/* Main oval track - ballast (lighter grey to show on dark bg) */}
+          <path d={track.mainPath} fill="none" stroke="#3a3a4a" strokeWidth="26" strokeLinecap="round" strokeLinejoin="round"/>
           {/* Branch ballast */}
           {track.branchPath && (
-            <path d={track.branchPath} fill="none" stroke="#1a1d28" strokeWidth="18" strokeLinecap="round"/>
+            <path d={track.branchPath} fill="none" stroke="#3a3a4a" strokeWidth="18" strokeLinecap="round"/>
           )}
           {/* UP Main ballast */}
           {track.upMainPath && (
-            <path d={track.upMainPath} fill="none" stroke="#1a1d28" strokeWidth="18" strokeLinecap="round"/>
+            <path d={track.upMainPath} fill="none" stroke="#3a3a4a" strokeWidth="18" strokeLinecap="round"/>
           )}
           
-          {/* Main track - rail base (grey) */}
-          <path d={track.mainPath} fill="none" stroke="#2a2a3a" strokeWidth="20" strokeLinecap="round" strokeLinejoin="round"/>
+          {/* Main track - rail base (dark grey) */}
+          <path d={track.mainPath} fill="none" stroke="#252530" strokeWidth="20" strokeLinecap="round" strokeLinejoin="round"/>
           {track.branchPath && (
-            <path d={track.branchPath} fill="none" stroke="#2a2a3a" strokeWidth="14" strokeLinecap="round"/>
+            <path d={track.branchPath} fill="none" stroke="#252530" strokeWidth="14" strokeLinecap="round"/>
           )}
           {track.upMainPath && (
-            <path d={track.upMainPath} fill="none" stroke="#2a2a3a" strokeWidth="14" strokeLinecap="round"/>
+            <path d={track.upMainPath} fill="none" stroke="#252530" strokeWidth="14" strokeLinecap="round"/>
           )}
           
-          {/* Main track - running rail (golden animated) */}
-          <path d={track.mainPath} fill="none" stroke="#d4a843" strokeWidth="2.5" strokeDasharray="16,12" strokeLinecap="round" strokeLinejoin="round" opacity="0.8">
+          {/* Main track - running rail (bright golden with glow) */}
+          <path d={track.mainPath} fill="none" stroke="#d4a843" strokeWidth="2.5" strokeDasharray="16,12" strokeLinecap="round" strokeLinejoin="round" opacity="1" filter="url(#railGlow)">
             <animate attributeName="stroke-dashoffset" from="0" to="-56" dur="2s" repeatCount="indefinite"/>
           </path>
           {/* Branch rail */}
           {track.branchPath && (
-            <path d={track.branchPath} fill="none" stroke="#d4a843" strokeWidth="2" strokeDasharray="10,8" strokeLinecap="round" opacity="0.6"/>
+            <path d={track.branchPath} fill="none" stroke="#d4a843" strokeWidth="2" strokeDasharray="10,8" strokeLinecap="round" opacity="0.9" filter="url(#railGlow)"/>
           )}
           {/* UP Main rail */}
           {track.upMainPath && (
-            <path d={track.upMainPath} fill="none" stroke="#d4a843" strokeWidth="2" strokeDasharray="10,8" strokeLinecap="round" opacity="0.6"/>
+            <path d={track.upMainPath} fill="none" stroke="#d4a843" strokeWidth="2" strokeDasharray="10,8" strokeLinecap="round" opacity="0.9" filter="url(#railGlow)"/>
           )}
           
           {/* Station */}
-          <rect x="360" y="155" width="80" height="50" rx="4" fill="#111520" stroke="#d4a843" strokeWidth="1.5" opacity="0.9"/>
-          <text x="400" y="177" textAnchor="middle" fill="#d4a843" fontSize="9" fontFamily="monospace" fontWeight="bold" opacity="0.95">STATION</text>
-          <rect x="370" y="185" width="60" height="12" rx="2" fill="#0a0d15" stroke="#d4a843" strokeWidth="0.5" opacity="0.7"/>
+          <rect x="360" y="155" width="80" height="50" rx="4" fill="#111520" stroke="#d4a843" strokeWidth="2" opacity="0.95"/>
+          <text x="400" y="177" textAnchor="middle" fill="#d4a843" fontSize="10" fontFamily="monospace" fontWeight="bold" opacity="1">STATION</text>
+          <rect x="370" y="185" width="60" height="12" rx="2" fill="#0a0d15" stroke="#d4a843" strokeWidth="0.8" opacity="0.9"/>
           
           {/* Platform */}
-          <rect x="475" y="285" width="150" height="30" rx="3" fill="#0d1020" stroke="#d4a843" strokeWidth="1"/>
+          <rect x="475" y="285" width="150" height="30" rx="3" fill="#0d1020" stroke="#d4a843" strokeWidth="1.5"/>
           <rect x="483" y="293" width="134" height="14" rx="2" fill="#111825"/>
-          <text x="550" y="305" textAnchor="middle" fill="#8a8fa0" fontSize="9" fontFamily="monospace">PLATFORM</text>
+          <text x="550" y="305" textAnchor="middle" fill="#c9a033" fontSize="9" fontFamily="monospace">PLATFORM</text>
           
           {/* Hidden paths for interaction - wider hit area */}
           <path ref={mainPathRef} d={track.mainPath} fill="none" stroke="transparent" strokeWidth="50"/>
