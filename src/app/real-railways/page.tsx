@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import Image from "next/image";
 
 const RAILWAY_DATA = {
@@ -357,6 +357,15 @@ function SectionHero({ title, tagline, era, status, color }: { title: string; ta
 
 // Nav component (duplicated here for this page)
 function Nav({ active }: { active: string }) {
+  const navClickRef = useRef<HTMLAudioElement | null>(null);
+  useEffect(() => {
+    navClickRef.current = new Audio("/sounds/nav-click.mp3");
+    navClickRef.current.volume = 0.3;
+    // Page load bell
+    const bell = new Audio("/sounds/page-load.mp3");
+    bell.volume = 0.2;
+    bell.play().catch(() => {});
+  }, []);
   const links = [
     { id: "cornish-main", label: "Cornish Main Line" },
     { id: "hayle", label: "Hayle Area" },
@@ -366,22 +375,39 @@ function Nav({ active }: { active: string }) {
   ];
 
   return (
-    <nav className="fixed left-0 right-0 z-40 transition-all duration-300" style={{ top: "0" }}>
-      <div className="max-w-5xl mx-auto px-4 py-3">
-        <div className="bg-railway-bg/80 backdrop-blur-md border border-railway-border/50 rounded-2xl px-2 py-1.5 shadow-2xl flex items-center gap-1 overflow-x-auto scrollbar-hide">
-          {links.map((l) => (
-            <a
-              key={l.id}
-              href={`#${l.id}`}
-              className={`whitespace-nowrap text-[10px] uppercase tracking-wider px-4 py-2 rounded-xl transition-all duration-300 ${
-                active === l.id
-                  ? "bg-railway-accent text-railway-bg font-bold shadow-lg shadow-railway-accent/20"
-                  : "text-railway-muted hover:text-railway-accent hover:bg-white/5"
-              }`}
-            >
-              {l.label}
-            </a>
-          ))}
+    <nav className="sticky top-0 z-40 bg-railway-bg/95 backdrop-blur-md border-b border-railway-border/50 py-3 mb-8">
+      <div className="max-w-6xl mx-auto px-4">
+        <div className="flex items-center gap-4">
+          {/* Home button */}
+          <a
+            href="/"
+            onClick={() => { if (navClickRef.current) { navClickRef.current.currentTime = 0; navClickRef.current.play().catch(() => {}); } }}
+            className="flex items-center gap-2 px-4 py-2 rounded-xl bg-railway-surface border border-railway-border/50 text-railway-muted hover:text-railway-accent hover:border-railway-accent/30 transition-all duration-300 text-xs font-medium shadow-lg"
+          >
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
+              <polyline points="9 22 9 12 15 12 15 22"/>
+            </svg>
+            <span className="hidden sm:inline">Home</span>
+          </a>
+          
+          {/* Section links */}
+          <div className="flex items-center gap-1 overflow-x-auto scrollbar-hide flex-1">
+            {links.map((l) => (
+              <a
+                key={l.id}
+                href={`#${l.id}`}
+                onClick={() => { if (navClickRef.current) { navClickRef.current.currentTime = 0; navClickRef.current.play().catch(() => {}); } }}
+                className={`whitespace-nowrap text-xs px-4 py-2 rounded-xl transition-all duration-300 ${
+                  active === l.id
+                    ? "bg-railway-accent text-railway-bg font-bold shadow-lg shadow-railway-accent/20"
+                    : "text-railway-muted hover:text-railway-accent hover:bg-white/5"
+                }`}
+              >
+                {l.label}
+              </a>
+            ))}
+          </div>
         </div>
       </div>
     </nav>

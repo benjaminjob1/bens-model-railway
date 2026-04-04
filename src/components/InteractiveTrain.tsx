@@ -2,51 +2,82 @@
 
 import { useEffect, useRef, useState } from "react";
 
-const TRACK_PATH = "M 150 200 Q 150 80 400 80 Q 650 80 650 200 Q 650 320 400 320 Q 150 320 150 200";
+// A nice oval with a branch line - looks like a simple railway layout
+const TRACK_PATH = "M 200 200 Q 200 100 400 100 Q 600 100 600 200 Q 600 300 400 300 Q 200 300 200 200";
+const BRANCH_PATH = "M 600 200 L 700 200 Q 720 200 720 180 L 720 140";
 
 export default function InteractiveTrain() {
   const trainRef = useRef<HTMLDivElement>(null);
   const pathRef = useRef<SVGPathElement>(null);
-  const [trainPos, setTrainPos] = useState({ x: 0, y: 0 });
+  const branchRef = useRef<SVGPathElement>(null);
+  const [trainPos, setTrainPos] = useState({ x: 50, y: 50 });
   const [visible, setVisible] = useState(false);
-  const [trail, setTrail] = useState<Array<{ x: number; y: number; id: number }>>([]);
+  const [trail, setTrail] = useState<Array<{ x: number; y: number; id: number; age: number }>>([]);
   const [isDragging, setIsDragging] = useState(false);
-  const [windowSize, setWindowSize] = useState({ w: 1920, h: 1080 });
+  const [pathSize, setPathSize] = useState({ w: 800, h: 400 });
   
-  const progress = useRef(0); // 0 to 1
+  const progress = useRef(0);
   const animFrame = useRef<number>(0);
   const trailId = useRef(0);
-  const lastTrailPos = useRef({ x: 0, y: 0 });
+  const lastTrailTime = useRef(0);
+  const trainAngle = useRef(0);
+  const lastPos = useRef({ x: 200, y: 200 });
 
   useEffect(() => {
-    if (!pathRef.current) return;
+    if (typeof window === "undefined") return;
+    
     const path = pathRef.current;
-    const totalLength = path.getTotalLength();
+    const branch = branchRef.current;
+    if (!path) return;
+    
+    const mainPathLength = path.getTotalLength();
+    const branchPathLength = branch?.getTotalLength() || 0;
+    const totalLength = mainPathLength + branchPathLength;
 
     const updatePosition = (p: number) => {
-      const point = path.getPointAtLength(p * totalLength);
-      // Map 800x400 SVG to viewport %
-      // Note: The SVG in the site is usually centered. 
-      // This is a simplified mapping that assumes the SVG covers most of the view or is used as a reference.
-      // For a better experience, we'll use viewport-relative coordinates if possible, 
-      // but since the railway is a background element, we'll try to match its scale.
-      setTrainPos({ x: (point.x / 800) * 100, y: (point.y / 400) * 100 });
+      let point;
+      let angle = 0;
       
-      // Update trail if moved significantly
-      const dist = Math.hypot(point.x - lastTrailPos.current.x, point.y - lastTrailPos.current.y);
-      if (dist > 15) {
+      if (p <= mainPathLength / totalLength) {
+        // On main oval
+        const mainP = p / (mainPathLength / totalLength);
+        point = path.getPointAtLength(mainP * mainPathLength);
+        // Calculate angle from previous point
+        if (mainP > 0.01) {
+          const prev = path.getPointAtLength((mainP - 0.01) * mainPathLength);
+          angle = Math.atan2(point.y - prev.y, point.x - prev.x) * (180 / Math.PI);
+        }
+      } else if (branch) {
+        // On branch line
+        const branchP = (p - mainPathLength / totalLength) / (branchPathLength / totalLength);
+        point = branch.getPointAtLength(branchP * branchPathLength);
+        if (branchP > 0.01) {
+          const prev = branch.getPointAtLength((branchP - 0.01) * branchPathLength);
+          angle = Math.atan2(point.y - prev.y, point.x - prev.x) * (180 / Math.PI);
+        }
+      }
+      
+      if (!point) return;
+      
+      const x = (point.x / pathSize.w) * 100;
+      const y = (point.y / pathSize.h) * 100;
+      setTrainPos({ x, y });
+      trainAngle.current = angle;
+      lastPos.current = { x: point.x, y: point.y };
+      
+      // Add trail dot
+      const now = Date.now();
+      if (now - lastTrailTime.current > 60) {
+        lastTrailTime.current = now;
         const id = ++trailId.current;
-        const x = (point.x / 800) * 100;
-        const y = (point.y / 400) * 100;
-        setTrail(t => [...t.slice(-15), { x, y, id }]);
-        setTimeout(() => setTrail(t => t.filter(i => i.id !== id)), 1500);
-        lastTrailPos.current = { x: point.x, y: point.y };
+        setTrail(t => [...t.slice(-25), { x, y, id, age: 0 }]);
+        setTimeout(() => setTrail(t => t.filter(i => i.id !== id)), 2000);
       }
     };
 
     const animate = () => {
       if (!isDragging) {
-        progress.current = (progress.current + 0.0008) % 1; // Slow auto-move
+        progress.current = (progress.current + 0.0005) % 1;
         updatePosition(progress.current);
       }
       animFrame.current = requestAnimationFrame(animate);
@@ -55,30 +86,42 @@ export default function InteractiveTrain() {
     const handleMove = (e: MouseEvent | TouchEvent) => {
       if (!isDragging) return;
       
+      const rect = path.getBoundingClientRect();
       const clientX = "touches" in e ? e.touches[0].clientX : e.clientX;
       const clientY = "touches" in e ? e.touches[0].clientY : e.clientY;
       
-      // Simple path-snapping: 
-      // We iterate through segments to find the closest progress point.
-      // For better perf, we just check 100 points along the path.
-      let minSourceDist = Infinity;
-      let bestProgress = progress.current;
-      
-      const rect = path.getBoundingClientRect();
-      const mouseX = ((clientX - rect.left) / rect.width) * 800;
-      const mouseY = ((clientY - rect.top) / rect.height) * 400;
+      // Convert mouse position to path coordinate
+      const mouseX = ((clientX - rect.left) / rect.width) * pathSize.w;
+      const mouseY = ((clientY - rect.top) / rect.height) * pathSize.h;
 
+      // Find closest point on main path
+      let minDist = Infinity;
+      let bestP = 0;
+      
       for (let i = 0; i <= 100; i++) {
         const p = i / 100;
-        const pt = path.getPointAtLength(p * totalLength);
+        const pt = path.getPointAtLength(p * mainPathLength);
         const d = Math.hypot(mouseX - pt.x, mouseY - pt.y);
-        if (d < minSourceDist) {
-          minSourceDist = d;
-          bestProgress = p;
+        if (d < minDist) {
+          minDist = d;
+          bestP = p;
         }
       }
       
-      progress.current = bestProgress;
+      // Check branch path too
+      if (branch) {
+        for (let i = 0; i <= 50; i++) {
+          const p = i / 50;
+          const pt = branch.getPointAtLength(p * branchPathLength);
+          const d = Math.hypot(mouseX - pt.x, mouseY - pt.y);
+          if (d < minDist) {
+            minDist = d;
+            bestP = (mainPathLength / totalLength) + (p * (branchPathLength / totalLength));
+          }
+        }
+      }
+      
+      progress.current = Math.max(0, Math.min(0.999, bestP * (mainPathLength / totalLength)));
       updatePosition(progress.current);
       if (!visible) setVisible(true);
     };
@@ -90,29 +133,36 @@ export default function InteractiveTrain() {
       const clientY = "touches" in e ? e.touches[0].clientY : e.clientY;
       
       const dist = Math.hypot(clientX - (rect.left + rect.width / 2), clientY - (rect.top + rect.height / 2));
-      if (dist < 50) {
+      if (dist < 40) {
         setIsDragging(true);
         const a = new Audio("/sounds/train-move.mp3");
-        a.volume = 0.15;
+        a.volume = 0.2;
         a.play().catch(() => {});
       }
     };
 
     const handleUp = () => setIsDragging(false);
 
-    window.addEventListener("mousemove", handleMove);
-    window.addEventListener("touchmove", handleMove);
+    const handleResize = () => {
+      const container = document.getElementById("train-path-container");
+      if (container) {
+        const rect = container.getBoundingClientRect();
+        // Match the hero SVG aspect ratio
+        setPathSize({ w: 800, h: 400 });
+      }
+    };
+
+    window.addEventListener("mousemove", handleMove, { passive: true });
+    window.addEventListener("touchmove", handleMove, { passive: true });
     window.addEventListener("mousedown", handleDown);
     window.addEventListener("touchstart", handleDown);
     window.addEventListener("mouseup", handleUp);
     window.addEventListener("touchend", handleUp);
+    window.addEventListener("resize", handleResize);
     
     animFrame.current = requestAnimationFrame(animate);
     setVisible(true);
-    const handleResize = () => setWindowSize({ w: window.innerWidth, h: window.innerHeight });
-    window.addEventListener("resize", handleResize);
     handleResize();
-    return () => window.removeEventListener("resize", handleResize);
 
     return () => {
       window.removeEventListener("mousemove", handleMove);
@@ -121,94 +171,147 @@ export default function InteractiveTrain() {
       window.removeEventListener("touchstart", handleDown);
       window.removeEventListener("mouseup", handleUp);
       window.removeEventListener("touchend", handleUp);
+      window.removeEventListener("resize", handleResize);
       cancelAnimationFrame(animFrame.current);
     };
-  }, [isDragging, visible]);
+  }, [isDragging, visible, pathSize]);
 
   return (
     <>
       <style>{`
         .train-trail-dot {
           position: fixed;
-          width: 6px;
-          height: 6px;
+          width: 4px;
+          height: 4px;
           border-radius: 50%;
-          background: rgba(212,168,67,0.4);
+          background: rgba(212,168,67,0.5);
           pointer-events: none;
           z-index: 9996;
-          animation: trainTrail 1.5s ease-out forwards;
+          animation: trainTrailFade 2s ease-out forwards;
           transform: translate(-50%, -50%);
         }
-        @keyframes trainTrail {
-          0% { opacity: 0.5; transform: translate(-50%, -50%) scale(1); }
+        @keyframes trainTrailFade {
+          0% { opacity: 0.6; transform: translate(-50%, -50%) scale(1); }
           100% { opacity: 0; transform: translate(-50%, -50%) scale(0.2); }
         }
-        .interactive-train {
+        .train-cursor {
           position: fixed;
-          width: 18px;
-          height: 18px;
-          border-radius: 50%;
-          background: radial-gradient(circle, #f0d060 0%, #d4a843 60%, rgba(212,168,67,0) 100%);
-          box-shadow: 0 0 20px 4px rgba(212,168,67,0.6);
+          width: 32px;
+          height: 20px;
           pointer-events: all;
-          z-index: 9999;
+          z-index: 9997;
           cursor: grab;
           transform: translate(-50%, -50%);
-          transition: transform 0.1s;
+          transition: opacity 0.5s;
+          filter: drop-shadow(0 0 8px rgba(212,168,67,0.8));
         }
-        .interactive-train:active { cursor: grabbing; scale: 1.2; }
-        .interactive-train::after {
-          content: "";
+        .train-cursor:active { cursor: grabbing; }
+        .train-cursor svg { width: 100%; height: 100%; }
+        .train-glow {
           position: absolute;
-          inset: -6px;
+          inset: -15px;
+          background: radial-gradient(circle, rgba(212,168,67,0.3) 0%, transparent 70%);
           border-radius: 50%;
-          border: 1px solid rgba(212,168,67,0.4);
-          animation: trainPulse 2s ease-in-out infinite;
+          animation: trainGlow 1.5s ease-in-out infinite;
         }
-        @keyframes trainPulse {
-          0%, 100% { transform: scale(1); opacity: 0.6; }
-          50% { transform: scale(1.5); opacity: 0; }
+        @keyframes trainGlow {
+          0%, 100% { opacity: 0.5; transform: scale(1); }
+          50% { opacity: 1; transform: scale(1.3); }
         }
-        .path-container {
+        .track-path-svg {
           position: fixed;
           top: 50%;
           left: 50%;
           transform: translate(-50%, -50%);
-          width: min(90vw, 800px);
-          height: min(45vw, 400px);
+          width: min(85vw, 800px);
+          height: min(42.5vw, 400px);
           pointer-events: none;
-          z-index: 0;
-          opacity: 0;
+          z-index: 1;
+          opacity: 0.25;
+        }
+        @media (max-width: 640px) {
+          .track-path-svg {
+            width: 95vw;
+            height: 47.5vw;
+          }
         }
       `}</style>
 
-      {/* Hidden reference path to match the hero SVG */}
-      <div className="path-container">
-        <svg viewBox="0 0 800 400" className="w-full h-full">
-          <path ref={pathRef} d={TRACK_PATH} />
-        </svg>
-      </div>
+      {/* Track path visible on page */}
+      <svg className="track-path-svg" viewBox="0 0 800 400">
+        {/* Main oval track - sleepers (dark) */}
+        <path d={TRACK_PATH} fill="none" stroke="#1a1d28" strokeWidth="24" strokeLinecap="round"/>
+        {/* Branch track - sleepers */}
+        <path d={BRANCH_PATH} fill="none" stroke="#1a1d28" strokeWidth="16" strokeLinecap="round"/>
+        
+        {/* Main oval track - rails */}
+        <path d={TRACK_PATH} fill="none" stroke="#2a2a3a" strokeWidth="18" strokeLinecap="round"/>
+        {/* Branch track - rails */}
+        <path d={BRANCH_PATH} fill="none" stroke="#2a2a3a" strokeWidth="12" strokeLinecap="round"/>
+        
+        {/* Main oval - running rail (golden) */}
+        <path d={TRACK_PATH} fill="none" stroke="#d4a843" strokeWidth="2" strokeDasharray="12,8" strokeLinecap="round" opacity="0.6"/>
+        {/* Branch - running rail */}
+        <path d={BRANCH_PATH} fill="none" stroke="#d4a843" strokeWidth="2" strokeDasharray="8,6" strokeLinecap="round" opacity="0.5"/>
+        
+        {/* Station marker */}
+        <rect x="360" y="155" width="80" height="50" rx="4" fill="#111520" stroke="#d4a843" strokeWidth="1.5" opacity="0.8"/>
+        <text x="400" y="177" textAnchor="middle" fill="#d4a843" fontSize="8" fontFamily="monospace" fontWeight="bold" opacity="0.9">STATION</text>
+        <rect x="370" y="185" width="60" height="12" rx="2" fill="#0a0d15" stroke="#d4a843" strokeWidth="0.5" opacity="0.6"/>
+        
+        {/* Hidden reference paths for interaction */}
+        <path ref={pathRef} d={TRACK_PATH} fill="none" stroke="transparent" strokeWidth="30"/>
+        <path ref={branchRef} d={BRANCH_PATH} fill="none" stroke="transparent" strokeWidth="20"/>
+      </svg>
 
+      {/* Trail dots */}
       {trail.map(dot => (
         <div
           key={dot.id}
           className="train-trail-dot"
-          style={{ 
-            left: `calc(50% + ${(dot.x - 50) * (Math.min(90, 80000/windowSize.w)/100)}vw)`, 
-            top: `calc(50% + ${(dot.y - 50) * (Math.min(45, 40000/windowSize.h)/100)}vh)` 
-          }}
+          style={{ left: `${dot.x}%`, top: `${dot.y}%` }}
         />
       ))}
 
+      {/* Train cursor - stylized locomotive */}
       <div
         ref={trainRef}
-        className="interactive-train"
+        className="train-cursor"
         style={{
-          left: `calc(50% + ${(trainPos.x - 50) * (Math.min(90, 80000/windowSize.w)/100)}vw)`,
-          top: `calc(50% + ${(trainPos.y - 50) * (Math.min(45, 40000/windowSize.h)/100)}vh)`,
+          left: `${trainPos.x}%`,
+          top: `${trainPos.y}%`,
           opacity: visible ? 1 : 0,
+          transform: `translate(-50%, -50%) rotate(${trainAngle.current}deg)`,
         }}
-      />
+      >
+        <div className="train-glow" />
+        <svg viewBox="0 0 40 24" fill="none">
+          {/* Locomotive body */}
+          <rect x="2" y="8" width="28" height="12" rx="3" fill="#d4a843"/>
+          <rect x="4" y="10" width="8" height="8" rx="1.5" fill="#0a0d15"/>
+          <rect x="14" y="10" width="6" height="8" rx="1" fill="#1a1d28"/>
+          <rect x="22" y="10" width="6" height="8" rx="1" fill="#1a1d28"/>
+          {/* Chimney */}
+          <rect x="28" y="4" width="6" height="8" rx="1" fill="#d4a843"/>
+          <rect x="29" y="2" width="4" height="3" rx="0.5" fill="#d4a843"/>
+          {/* Boiler bands */}
+          <rect x="8" y="9" width="1" height="10" fill="#b8942f"/>
+          <rect x="12" y="9" width="1" height="10" fill="#b8942f"/>
+          <rect x="18" y="9" width="1" height="10" fill="#b8942f"/>
+          {/* Wheels */}
+          <circle cx="10" cy="20" r="3" fill="#2a2a3a" stroke="#d4a843" strokeWidth="0.5"/>
+          <circle cx="10" cy="20" r="1" fill="#d4a843"/>
+          <circle cx="20" cy="20" r="3" fill="#2a2a3a" stroke="#d4a843" strokeWidth="0.5"/>
+          <circle cx="20" cy="20" r="1" fill="#d4a843"/>
+          <circle cx="28" cy="18" r="2.5" fill="#2a2a3a" stroke="#d4a843" strokeWidth="0.5"/>
+          <circle cx="28" cy="18" r="0.8" fill="#d4a843"/>
+          {/* Cowcatcher */}
+          <path d="M 2 16 L 0 20 L 0 22 L 4 20 Z" fill="#b8942f"/>
+          {/* Headlight */}
+          <circle cx="32" cy="12" r="2" fill="#fff" opacity="0.9"/>
+          <circle cx="32" cy="12" r="1" fill="#ffeb3b"/>
+        </svg>
+      </div>
     </>
   );
 }
