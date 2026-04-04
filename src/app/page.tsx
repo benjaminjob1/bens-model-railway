@@ -3,6 +3,8 @@
 import { useState, useEffect, useRef } from "react";
 import Image from "next/image";
 import InteractiveTrain from "@/components/InteractiveTrain";
+import SoundConsentModal from "@/components/SoundConsentModal";
+import { useSound } from "@/context/SoundContext";
 import { motion, useScroll, useTransform, useInView, AnimatePresence } from "framer-motion";
 
 const TRACK_PLAN_SVG = `<svg viewBox="0 0 800 400" xmlns="http://www.w3.org/2000/svg" class="w-full h-full">
@@ -60,7 +62,7 @@ const GALLERY_ITEMS = [
   { src: "https://images.unsplash.com/photo-1474487548417-781cb71495f3?w=600&q=80", alt: "Railway viaduct in landscape", span: "col-span-2" },
 ];
 
-function Nav({ active }: { active: string }) {
+function Nav({ active, isMuted, onToggleMute }: { active: string; isMuted: boolean; onToggleMute: () => void }) {
   const [scrolled, setScrolled] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const [bannerVisible, setBannerVisible] = useState(true);
@@ -82,8 +84,8 @@ function Nav({ active }: { active: string }) {
     { id: "home", label: "Home" }, { id: "layout", label: "The Layout" }, { id: "journal", label: "Build Journal" },
     { id: "renders", label: "3D Renders" }, { page: "/real-railways", label: "Real Railways" }, { id: "software", label: "Software & Hardware" },
   ];
-  const playNavClick = () => { if (navClickRef.current) { navClickRef.current.currentTime = 0; navClickRef.current.play().catch(() => {}); } };
-  const playMenuToggle = () => { if (menuToggleRef.current) { menuToggleRef.current.currentTime = 0; menuToggleRef.current.play().catch(() => {}); } };
+  const playNavClick = () => { if (!isMuted && navClickRef.current) { navClickRef.current.currentTime = 0; navClickRef.current.play().catch(() => {}); } };
+  const playMenuToggle = () => { if (!isMuted && menuToggleRef.current) { menuToggleRef.current.currentTime = 0; menuToggleRef.current.play().catch(() => {}); } };
   return (
     <motion.nav className={`fixed left-0 right-0 z-[9998] transition-all duration-300 ${scrolled ? "nav-blur bg-railway-bg/80 border-b border-railway-border/50" : "bg-transparent"}`} style={{ top: bannerVisible ? "48px" : "0" }}
       initial={{ y: -80 }} animate={{ y: 0 }} transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}>
@@ -100,6 +102,24 @@ function Nav({ active }: { active: string }) {
             </a>
           ))}
         </div>
+        <button
+          onClick={onToggleMute}
+          title={isMuted ? "Unmute sounds" : "Mute sounds"}
+          className="p-2 rounded-xl text-railway-muted hover:text-railway-accent hover:bg-railway-accent/10 transition-all duration-200 active:scale-95"
+        >
+          {isMuted ? (
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+              <path d="M11 5L6 9H2v6h4l5 4V5z" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
+              <line x1="23" y1="9" x2="17" y2="15" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"/>
+              <line x1="17" y1="9" x2="23" y2="15" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"/>
+            </svg>
+          ) : (
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+              <path d="M11 5L6 9H2v6h4l5 4V5z" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
+              <path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"/>
+            </svg>
+          )}
+        </button>
         <button className="md:hidden text-railway-muted p-1" onClick={() => { playMenuToggle(); setMenuOpen(!menuOpen); }}>
           <svg width="22" height="22" viewBox="0 0 22 22" fill="none">{menuOpen ? <path d="M4 4L18 18M18 4L4 18" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/> : <path d="M3 6h16M3 11h16M3 16h16" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>}</svg>
         </button>
@@ -150,7 +170,7 @@ function Nav({ active }: { active: string }) {
   );
 }
 
-function Hero() {
+function Hero({ isMuted }: { isMuted: boolean }) {
   const { scrollY } = useScroll();
   const y = useTransform(scrollY, [0, 600], [0, 120]);
   const opacity = useTransform(scrollY, [0, 400], [1, 0]);
@@ -185,11 +205,11 @@ function Hero() {
           ))}
         </motion.div>
         <motion.div className="flex flex-wrap justify-center gap-4" initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 1.3 }}>
-          <a href="#layout" onClick={() => { const a = new Audio("/sounds/cta-whistle.mp3"); a.volume = 0.22; a.play().catch(() => {}); }}
+          <a href="#layout" onClick={() => { if (!isMuted) { const a = new Audio("/sounds/cta-whistle.mp3"); a.volume = 0.22; a.play().catch(() => {}); } }}
             className="relative overflow-hidden btn-shine bg-railway-accent text-railway-bg font-bold px-7 py-3.5 rounded-xl transition-all duration-300 hover:bg-railway-accent-hover hover:shadow-xl hover:shadow-railway-accent/20 active:scale-95 cursor-pointer">
             Explore the Layout
           </a>
-          <a href="/real-railways" onClick={() => { const a = new Audio("/sounds/cta-whistle.mp3"); a.volume = 0.22; a.play().catch(() => {}); }}
+          <a href="/real-railways" onClick={() => { if (!isMuted) { const a = new Audio("/sounds/cta-whistle.mp3"); a.volume = 0.22; a.play().catch(() => {}); } }}
             className="border border-railway-border text-railway-muted font-semibold px-7 py-3.5 rounded-xl transition-all duration-300 hover:border-railway-accent/50 hover:text-railway-text hover:bg-railway-accent/5 active:scale-95">
             Real Railways →
           </a>
@@ -455,10 +475,20 @@ function Footer() {
 
 export default function Home() {
   const [activeSection, setActiveSection] = useState("home");
+  const { isMuted, setIsMuted, hasDecided } = useSound();
+  const [showConsent, setShowConsent] = useState(false);
+  const playPageSound = () => {
+    if (!isMuted) {
+      const audio = new Audio("/sounds/page-load.mp3");
+      audio.volume = 0.2; audio.play().catch(() => {});
+    }
+  };
   useEffect(() => {
-    // Play station bell on first page load
-    const audio = new Audio("/sounds/page-load.mp3");
-    audio.volume = 0.2; audio.play().catch(() => {});
+    if (!hasDecided) {
+      setShowConsent(true);
+    } else {
+      playPageSound();
+    }
     const observer = new IntersectionObserver(
       (entries) => { entries.forEach((entry) => { if (entry.isIntersecting) setActiveSection(entry.target.id); }); },
       { threshold: 0.25, rootMargin: "-100px 0px -55% 0px" }
@@ -466,11 +496,19 @@ export default function Home() {
     document.querySelectorAll("section[id]").forEach((s) => observer.observe(s));
     return () => observer.disconnect();
   }, []);
+
+  const handleConsentPlay = () => {
+    setShowConsent(false);
+    setIsMuted(false);
+    playPageSound();
+  };
+
   return (
     <main className="relative z-10">
+      {showConsent && <SoundConsentModal onPlaySounds={handleConsentPlay} />}
       <InteractiveTrain />
-      <Nav active={activeSection} />
-      <Hero />
+      <Nav active={activeSection} isMuted={isMuted} onToggleMute={() => setIsMuted(!isMuted)} />
+      <Hero isMuted={isMuted} />
       <TheLayout />
       <BuildJournal />
       <RendersGallery />

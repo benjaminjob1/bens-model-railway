@@ -3,6 +3,7 @@ import { Inter, Playfair_Display } from "next/font/google";
 import { Analytics } from "@vercel/analytics/next";
 import "./globals.css";
 import DisclaimerBanner from "@/components/DisclaimerBanner";
+import { SoundProvider } from "@/context/SoundContext";
 
 const inter = Inter({
   subsets: ["latin"],
@@ -53,7 +54,9 @@ export default function RootLayout({
         style={{ paddingTop: "var(--banner-h, 48px)" }}
       >
         <DisclaimerBanner />
-        {children}
+        <SoundProvider>
+          {children}
+        </SoundProvider>
         <Analytics />
       </body>
     </html>
