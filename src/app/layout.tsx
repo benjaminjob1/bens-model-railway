@@ -40,6 +40,7 @@ export default function RootLayout({
       </head>
       <body
         className={`${inter.variable} ${playfair.variable} font-body bg-railway-bg text-railway-text antialiased`}
+        style={{ paddingTop: "48px" }}
       >
         <DisclaimerBanner />
         {children}

@@ -71,7 +71,7 @@ function Nav({ active }: { active: string }) {
   ];
   const playWhistle = () => { if (whistleRef.current) { whistleRef.current.currentTime = 0; whistleRef.current.play().catch(() => {}); } };
   return (
-    <motion.nav className={`fixed top-[44px] left-0 right-0 z-50 transition-all duration-300 ${scrolled ? "nav-blur bg-railway-bg/80 border-b border-railway-border/50" : "bg-transparent"}`}
+    <motion.nav className={`fixed top-0 left-0 right-0 z-[9998] transition-all duration-300 ${scrolled ? "nav-blur bg-railway-bg/80 border-b border-railway-border/50" : "bg-transparent"}`}
       initial={{ y: -80 }} animate={{ y: 0 }} transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}>
       <div className="max-w-6xl mx-auto px-4 py-4 flex items-center justify-between">
         <span className="font-heading text-lg font-bold text-railway-accent tracking-wide">Ben&apos;s Model Railway</span>
