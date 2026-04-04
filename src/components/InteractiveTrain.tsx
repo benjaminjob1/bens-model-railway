@@ -392,16 +392,20 @@ export default function InteractiveTrain({ showControls = true }: InteractiveTra
       return { point: mainPath.getPointAtLength(0), onBranch: false };
     };
 
-    const updatePosition = (p: number) => {
+    const updatePosition = (p: number, isRev = false) => {
       const { point } = getPointAtProgress(p);
       
       const delta = 0.003;
       const { point: nextPoint } = getPointAtProgress(Math.min(p + delta, 0.9999));
       const dx = nextPoint.x - point.x;
       const dy = nextPoint.y - point.y;
+      // Angle from atan2 gives direction from current point to next point.
+      // When going backward (isRev=true), atan2 points opposite to travel
+      // direction — add 180° so the engine faces forward.
       let angle = Math.atan2(dy, dx) * (180 / Math.PI);
-      // Flip train SVG when moving left so front faces correct direction
-      const flipX = dx >= 0 ? 1 : -1;
+      if (isRev) angle += 180;
+      // flipX mirrors the SVG horizontally — 1 means no mirror
+      const flipX = 1;
       const scaleX = svgRect.width / 800;
       const scaleY = svgRect.height / 400;
       const pixelX = point.x * scaleX;
@@ -422,8 +426,11 @@ export default function InteractiveTrain({ showControls = true }: InteractiveTra
 
     const animate = () => {
       if (!isDragging) {
+        const prev = progress.current;
         progress.current = (progress.current + 0.00025) % 1;
-        updatePosition(progress.current);
+        // Detect wrap-around: when progress resets from ~1 back to ~0, train is NOT reversing
+        const isRev = progress.current < prev;
+        updatePosition(progress.current, isRev);
       }
       animFrame.current = requestAnimationFrame(animate);
     };
