@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState, useMemo, useCallback } from "react";
+import { useSound } from "@/context/SoundContext";
 
 // ============================================
 // REAL 00 GAUGE (4mm/ft) TRACK SPECIFICATIONS
@@ -282,11 +283,35 @@ export default function InteractiveTrain({ showControls = true }: InteractiveTra
   const [isDragging, setIsDragging] = useState(false);
   const [trainAngle, setTrainAngle] = useState(0);
   const [trainScaleX, setTrainScaleX] = useState(1);
-  const [svgRect, setSvgRect] = useState({ 
-    left: typeof window !== 'undefined' ? window.innerWidth / 2 - 400 : 0, 
-    top: typeof window !== 'undefined' ? window.innerHeight / 2 - 200 : 0, 
-    width: 800, height: 400 
+  const [smokeParticles, setSmokeParticles] = useState<Array<{ id: number; x: number; y: number; age: number }>>([]);
+  const [activeSignals, setActiveSignals] = useState<Set<string>>(new Set());
+  const smokeId = useRef(0);
+  const { isMuted } = useSound();
+
+  // Signal positions on the default oval layout
+  const SIGNAL_POSITIONS = [
+    { id: 'sig-1', x: 400, y: 80 },
+    { id: 'sig-2', x: 650, y: 200 },
+    { id: 'sig-3', x: 400, y: 320 },
+    { id: 'sig-4', x: 250, y: 80 },
+    { id: 'sig-5', x: 150, y: 200 },
+  ];
+  const [svgRect, setSvgRect] = useState({
+    left: typeof window !== 'undefined' ? window.innerWidth / 2 - 400 : 0,
+    top: typeof window !== 'undefined' ? window.innerHeight / 2 - 200 : 0,
+    width: 800, height: 400
   });
+
+  // Animate smoke particles
+  useEffect(() => {
+    if (smokeParticles.length === 0) return;
+    const interval = setInterval(() => {
+      setSmokeParticles(prev =>
+        prev.map(p => ({ ...p, age: p.age + 1 })).filter(p => p.age < 20)
+      );
+    }, 50);
+    return () => clearInterval(interval);
+  }, [smokeParticles.length]);
   
   const progress = useRef(0.1);
   const animFrame = useRef<number>(0);
@@ -446,9 +471,26 @@ export default function InteractiveTrain({ showControls = true }: InteractiveTra
       const dist = Math.hypot(clientX - (rect.left + rect.width / 2), clientY - (rect.top + rect.height / 2));
       if (dist < 70) {
         setIsDragging(true);
+        // Play move sound
         const a = new Audio("/sounds/train-move.mp3");
         a.volume = 0.2;
         a.play().catch(() => {});
+        // Play whistle on click
+        if (!isMuted) {
+          const w = new Audio("/sounds/whistle.mp3");
+          w.volume = 0.3;
+          w.play().catch(() => {});
+        }
+        // Spawn smoke particles at chimney position
+        const rad = (trainAngle * Math.PI) / 180;
+        const scaleX = trainScaleX;
+        const frontX = Math.cos(rad) * 58 + trainPos.x;
+        const chimneyAbsY = Math.sin(rad) * -15 + Math.cos(rad) * (scaleX * 2) * -1 + trainPos.y;
+        const newParticles: Array<{ id: number; x: number; y: number; age: number }> = [];
+        for (let i = 0; i < 10; i++) {
+          newParticles.push({ id: ++smokeId.current, x: frontX, y: chimneyAbsY, age: 0 });
+        }
+        setSmokeParticles(prev => [...prev, ...newParticles]);
       }
     };
 
@@ -504,6 +546,14 @@ export default function InteractiveTrain({ showControls = true }: InteractiveTra
         @keyframes trainTrailFade {
           0% { opacity: 0.8; transform: translate(-50%, -50%) scale(1); }
           100% { opacity: 0; transform: translate(-50%, -50%) scale(0.1); }
+        }
+        .smoke-particle {
+          position: absolute;
+          border-radius: 50%;
+          background: rgba(180, 180, 180, 0.7);
+          pointer-events: none;
+          z-index: 4;
+          transform: translate(-50%, -50%);
         }
         .train-cursor {
           position: absolute;
@@ -668,7 +718,32 @@ export default function InteractiveTrain({ showControls = true }: InteractiveTra
                 </text>
               </g>
             ))}
-            
+
+            {/* Signal indicators */}
+            {SIGNAL_POSITIONS.map(sig => {
+              const active = activeSignals.has(sig.id);
+              return (
+                <g key={sig.id} onClick={() => {
+                  if (!isMuted) {
+                    const s = new Audio("/sounds/train-move.mp3");
+                    s.volume = 0.15;
+                    s.play().catch(() => {});
+                  }
+                  setActiveSignals(prev => {
+                    const next = new Set(prev);
+                    if (next.has(sig.id)) next.delete(sig.id);
+                    else next.add(sig.id);
+                    return next;
+                  });
+                }} style={{ cursor: 'pointer' }}>
+                  <line x1={sig.x} y1={sig.y} x2={sig.x} y2={sig.y + 18} stroke={active ? '#22c55e' : '#ef4444'} strokeWidth="1.5" opacity="0.6"/>
+                  <circle cx={sig.x} cy={sig.y} r="5" fill={active ? '#22c55e' : '#ef4444'} opacity={active ? 0.9 : 0.7}
+                    style={{ filter: active ? 'drop-shadow(0 0 4px #22c55e)' : 'drop-shadow(0 0 3px #ef4444)' }}/>
+                  {active && <circle cx={sig.x} cy={sig.y} r="8" fill="none" stroke="#22c55e" strokeWidth="1" opacity="0.4"/>}
+                </g>
+              );
+            })}
+
             {/* Hidden main path for train interaction */}
             <path ref={mainPathRef} d={mainTrackPath} fill="none" stroke="transparent" strokeWidth="50"/>
             {branchTrackPath && (
@@ -680,7 +755,23 @@ export default function InteractiveTrain({ showControls = true }: InteractiveTra
           {trail.map(dot => (
             <div key={dot.id} className="train-trail-dot" style={{ left: dot.x, top: dot.y }}/>
           ))}
-          
+
+          {/* Smoke particles */}
+          {smokeParticles.map(p => (
+            <div
+              key={p.id}
+              className="smoke-particle"
+              style={{
+                left: p.x,
+                top: p.y,
+                width: `${Math.max(2, 14 - p.age * 0.7)}px`,
+                height: `${Math.max(2, 14 - p.age * 0.7)}px`,
+                opacity: Math.max(0, 0.7 - p.age * 0.035),
+                transform: `translate(-50%, -50%) translateY(${-p.age * 2}px)`,
+              }}
+            />
+          ))}
+
           {/* Train cursor */}
           <div
             ref={trainRef}
