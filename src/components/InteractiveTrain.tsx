@@ -283,6 +283,14 @@ export default function InteractiveTrain({ showControls = true }: InteractiveTra
   const [isDragging, setIsDragging] = useState(false);
   const [trainAngle, setTrainAngle] = useState(0);
   const [trainScaleX, setTrainScaleX] = useState(1);
+  // Auto-whistle refs: interval starts at 30s, increases each trigger up to 30min
+  const autoIntervalRef = useRef(30000); // ms
+  const autoTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  // Keep refs in sync with state so interval can read current values
+  const trainAngleRef = useRef(trainAngle);
+  const trainPosRef = useRef(trainPos);
+  useEffect(() => { trainAngleRef.current = trainAngle; }, [trainAngle]);
+  useEffect(() => { trainPosRef.current = trainPos; }, [trainPos]);
   const [smokeParticles, setSmokeParticles] = useState<Array<{ id: number; x: number; y: number; age: number }>>([]);
   const [activeSignals, setActiveSignals] = useState<Set<string>>(new Set());
   const smokeId = useRef(0);
@@ -336,13 +344,37 @@ export default function InteractiveTrain({ showControls = true }: InteractiveTra
     ? [{ x: 400, y: 160, label: 'STATION' }]
     : randomLayout.stations;
 
+  // Auto-whistle: runs smoke + whistle at increasing intervals (30s → 1m → 2m → 3m → 5m → ... → 30m)
   useEffect(() => {
     if (typeof window === "undefined") return;
     const saved = localStorage.getItem('railway-track-mode');
     if (saved === 'random' || saved === 'default') setTrackMode(saved);
-    
-    // Force initial rect update after mount so train positions correctly from start
-    setTimeout(() => updateSvgRect(), 0);
+
+    const updateRect = () => { if (svgRef.current) { const r = svgRef.current.getBoundingClientRect(); setSvgRect({ left: r.left, top: r.top, width: r.width, height: r.height }); } };
+    updateRect();
+
+    const doAutoWhistle = () => {
+      if (isMuted) return;
+      const rad = (trainAngleRef.current * Math.PI) / 180;
+      const aheadDist = 22, smokeRise = 20;
+      const px = trainPosRef.current.x + Math.cos(rad) * aheadDist;
+      const py = trainPosRef.current.y + Math.sin(rad) * aheadDist - smokeRise;
+      const newParts: Array<{ id: number; x: number; y: number; age: number }> = [];
+      for (let i = 0; i < 10; i++) newParts.push({ id: ++smokeId.current, x: px, y: py, age: 0 });
+      setSmokeParticles(prev => [...prev, ...newParts]);
+      const w = new Audio("/sounds/whistle.mp3");
+      w.volume = 0.12;
+      w.play().catch(() => {});
+      // Increase interval: 30s → 1m → 2m → 3m → 5m → 10m → 20m → 30m (max)
+      const intervals = [60000, 120000, 180000, 300000, 600000, 1200000, 1800000];
+      const idx = intervals.indexOf(autoIntervalRef.current);
+      autoIntervalRef.current = idx >= 0 && idx < intervals.length - 1 ? intervals[idx + 1] : 1800000;
+      if (autoTimerRef.current) clearInterval(autoTimerRef.current);
+      autoTimerRef.current = setInterval(doAutoWhistle, autoIntervalRef.current);
+    };
+
+    autoTimerRef.current = setInterval(doAutoWhistle, autoIntervalRef.current);
+    return () => { if (autoTimerRef.current) clearInterval(autoTimerRef.current); };
   }, []);
 
   const handleModeChange = useCallback((mode: 'default' | 'random') => {
@@ -404,8 +436,9 @@ export default function InteractiveTrain({ showControls = true }: InteractiveTra
       // direction — add 180° so the engine faces forward.
       let angle = Math.atan2(dy, dx) * (180 / Math.PI);
       if (isRev) angle += 180;
-      // flipX mirrors the SVG horizontally — flip when moving left (dx < 0) so train faces forward
-      const flipX = dx < 0 ? -1 : 1;
+      // flipX based on angle: when cos(angle) >= 0 (right half of oval), flip so chimney leads
+      const radAngle = (angle * Math.PI) / 180;
+      const flipX = Math.cos(radAngle) >= 0 ? -1 : 1;
       const scaleX = svgRect.width / 800;
       const scaleY = svgRect.height / 400;
       const pixelX = point.x * scaleX;
@@ -482,10 +515,10 @@ export default function InteractiveTrain({ showControls = true }: InteractiveTra
         const a = new Audio("/sounds/train-move.mp3");
         a.volume = 0.2;
         a.play().catch(() => {});
-        // Play whistle on click
+        // Play whistle on click (quieter)
         if (!isMuted) {
           const w = new Audio("/sounds/whistle.mp3");
-          w.volume = 0.3;
+          w.volume = 0.12;
           w.play().catch(() => {});
         }
         // Spawn smoke at chimney (front of train = ahead of center along travel direction)
