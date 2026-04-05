@@ -435,17 +435,12 @@ export default function InteractiveTrain({ showControls = true }: InteractiveTra
       const dx = nextPoint.x - point.x;
       const dy = nextPoint.y - point.y;
       
-      // 1. Calculate the movement angle
       let angle = Math.atan2(dy, dx) * (180 / Math.PI);
       if (isRev) angle += 180;
-
-      // 2. Front is on the LEFT of the SVG. Point it toward the motion.
-      const rotation = angle + 180;
-      
-      // 3. Simple flip: if moving generally RIGHT (x component > 0), flip horizontally.
-      // dx > 0 (moving LEFT): front should face left → flipX = 1 (no mirror, SVG front already left)
-      // dx < 0 (moving RIGHT): front should face right → flipX = -1 (mirror SVG to flip left→right)
-      const flipX = dx > 0 ? 1 : -1;
+      // SVG front is on LEFT. Raw angle already points LEFT in the direction of motion.
+      // No +180 needed. No flips needed.
+      const rotation = angle;
+      const flipX = 1;
       
       const pixelX = point.x * (svgRect.width / 800);
       const pixelY = point.y * (svgRect.height / 400);
