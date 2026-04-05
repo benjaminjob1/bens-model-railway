@@ -73,34 +73,31 @@ function makeTerminus(ox: number, oy: number) {
 function makeJunction(ox: number, oy: number) {
   const outerRX = 330, outerRY = 155;
   const innerRX = 210, innerRY = 95;
-  const rbx = ox + outerRX, rby = oy; // right side of oval
-  const lbx = ox - outerRX, lby = oy; // left side of oval
+  const rbx = ox + outerRX, rby = oy;
+  const lbx = ox - outerRX, lby = oy;
 
-  // Right branch splits from oval rightmost point (rbx, rby=oy)
-  // Goes UP from right side, stays within oval right bound
-  const rBranchEndX = rbx + 30; // just outside oval edge
-  const rBranchEndY = oy - 150;
-
-  // Left branch splits from oval leftmost point
-  const lBranchEndX = lbx - 30;
-  const lBranchEndY = oy + 150;
-
-  // Cross-overs connecting inner and outer ovals (makes it feel like a real network)
-  const crossTopY = oy - innerRY - 15;  // above inner oval, below outer
-  const crossBotY = oy + innerRY + 15;
+  // Oval path analysis:
+  // Outer: x[70..730], y[45..355]  |  Inner: x[190..610], y[105..295]
+  // Gap at y=200 center: 120px on each side between inner and outer ovals
 
   const parts = [
-    // Main outer oval (train travels this)
+    // Outer oval (main line)
     { path: `M ${ox - outerRX} ${oy} A ${outerRX} ${outerRY} 0 0 1 ${ox + outerRX} ${oy} A ${outerRX} ${outerRY} 0 0 1 ${ox - outerRX} ${oy}`, trackWidth: 26, type: 'main' as const },
-    // Inner oval (reversing loop) - connected via cross-overs
+    // Inner oval (reversing loop)
     { path: `M ${ox - innerRX} ${oy} A ${innerRX} ${innerRY} 0 0 1 ${ox + innerRX} ${oy} A ${innerRX} ${innerRY} 0 0 1 ${ox - innerRX} ${oy}`, trackWidth: 18, type: 'main' as const },
-    // Top cross-over: connects outer oval top area to inner oval
-    { path: `M ${ox} ${oy - outerRY + 20} L ${ox} ${oy - innerRY - 10}`, trackWidth: 18, type: 'main' as const },
-    // Bottom cross-over: connects outer oval bottom area to inner oval
-    { path: `M ${ox - 40} ${oy + outerRY - 20} L ${ox - 40} ${oy + innerRY + 10}`, trackWidth: 18, type: 'main' as const },
-    // Right branch: splits from outer oval right side, goes up and right
+    // Right side connection: inner oval right → outer oval right  (closes 120px gap at center)
+    { path: `M ${ox + innerRX} ${oy} L ${ox + outerRX} ${oy}`, trackWidth: 18, type: 'main' as const },
+    // Left side connection: inner oval left → outer oval left  (closes 120px gap at center)
+    { path: `M ${ox - innerRX} ${oy} L ${ox - outerRX} ${oy}`, trackWidth: 18, type: 'main' as const },
+    // Top section: add connecting track between outer oval top area
+    { path: `M ${ox - 60} ${oy - innerRY} L ${ox - 60} ${oy - outerRY + 10}`, trackWidth: 16, type: 'main' as const },
+    { path: `M ${ox + 60} ${oy - innerRY} L ${ox + 60} ${oy - outerRY + 10}`, trackWidth: 16, type: 'main' as const },
+    // Bottom section: connect inner oval bottom to outer oval bottom
+    { path: `M ${ox - 60} ${oy + innerRY} L ${ox - 60} ${oy + outerRY - 10}`, trackWidth: 16, type: 'main' as const },
+    { path: `M ${ox + 60} ${oy + innerRY} L ${ox + 60} ${oy + outerRY - 10}`, trackWidth: 16, type: 'main' as const },
+    // Right branch: splits from outer oval right side, goes UP within viewBox
     { path: `M ${rbx} ${rby} L ${rbx + 20} ${rby - 25} A 80 65 0 0 1 ${rbx + 90} ${rby - 80} L ${rbx + 90} ${rby - 130}`, trackWidth: 18, type: 'branch' as const },
-    // Left branch: splits from outer oval left side, goes down and left
+    // Left branch: splits from outer oval left side, goes DOWN within viewBox
     { path: `M ${lbx} ${lby} L ${lbx - 20} ${lby + 25} A 80 65 0 0 0 ${lbx - 90} ${lby + 80} L ${lbx - 90} ${lby + 130}`, trackWidth: 18, type: 'branch' as const },
     // Sidings on right branch
     { path: `M ${rbx + 60} ${rby - 60} L ${rbx + 130} ${rby - 60}`, trackWidth: 13, type: 'siding' as const },
@@ -175,11 +172,14 @@ function makeDepot(ox: number, oy: number) {
     // Freight sidings off left branch
     { path: `M ${leftX - 40} ${oy + 60} L ${leftX - 120} ${oy + 60}`, trackWidth: 16, type: 'yard' as const },
     { path: `M ${leftX - 80} ${oy + 100} L ${leftX - 160} ${oy + 100}`, trackWidth: 14, type: 'siding' as const },
-    // Central lead connecting inner and outer oval bottoms
-    { path: `M ${ox - 30} ${oy + outerRY - 30} L ${ox - 30} ${oy + innerRY + 20}`, trackWidth: 16, type: 'main' as const },
+    // Central lead connecting oval tops to main deadline label
+    { path: `M ${ox} ${oy - outerRY + 15} L ${ox} ${oy - outerRY + 55}`, trackWidth: 16, type: 'main' as const },
+    { path: `M ${ox} ${oy - outerRY + 55} L ${ox} ${oy - outerRY + 90}`, trackWidth: 16, type: 'main' as const },
+    // Connect left and right sides of the depot area to the deadline
+    { path: `M ${ox - 50} ${oy - outerRY + 55} L ${ox + 50} ${oy - outerRY + 55}`, trackWidth: 14, type: 'main' as const },
   ];
   const stations = [
-    { x: ox, y: oy - outerRY - 10, label: 'MAIN DEADLINE' },
+    { x: ox, y: oy - outerRY + 38, label: 'MAIN DEADLINE' },
     { x: rightX + 50, y: oy + 130, label: 'ENGINE SHED' },
     { x: leftX - 50, y: oy + 130, label: 'FREIGHT YARD' },
   ];
