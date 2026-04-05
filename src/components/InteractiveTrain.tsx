@@ -816,6 +816,21 @@ export default function InteractiveTrain({ showControls = true }: InteractiveTra
               );
             })}
             
+            {/* Junction markers — show physical connection points between tracks */}
+            {trackMode === 'default' && (
+              <g>
+                {/* Junction at (650,200): oval rightmost connects to branchPath */}
+                <circle cx="650" cy="200" r="9" fill="#1a1d28" stroke="#d4a843" strokeWidth="2" opacity="0.9"/>
+                <circle cx="650" cy="200" r="4" fill="#d4a843" opacity="0.8"/>
+                {/* Junction at (250,80): oval top connects to upMainPath */}
+                <circle cx="250" cy="80" r="9" fill="#1a1d28" stroke="#d4a843" strokeWidth="2" opacity="0.9"/>
+                <circle cx="250" cy="80" r="4" fill="#d4a843" opacity="0.8"/>
+                {/* Junction at (350,80): upMainPath returns to oval */}
+                <circle cx="350" cy="80" r="9" fill="#1a1d28" stroke="#d4a843" strokeWidth="2" opacity="0.9"/>
+                <circle cx="350" cy="80" r="4" fill="#d4a843" opacity="0.8"/>
+              </g>
+            )}
+            
             {/* Station labels */}
             {currentStations.map((station, idx) => (
               <g key={`station-${idx}`}>
