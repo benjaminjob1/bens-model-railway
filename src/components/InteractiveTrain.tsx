@@ -445,8 +445,9 @@ export default function InteractiveTrain({ showControls = true }: InteractiveTra
       // At the LEFT side (angle≈270°/-90°), rotate(-90) makes the SVG appear
       // upside down. Fix: use scaleX=-1 instead (mirrors without rotation).
       // Everywhere else (top, right, bottom) the rotation alone works correctly.
-      const normalizedAngle = ((angle % 360) + 360) % 360;
-      const flipX = (normalizedAngle > 80 && normalizedAngle < 280) ? 1 : -1;
+      // Pure rotation: no scaleX flip needed. 
+      // The SVG is now vertically symmetric so rotation looks correct at all angles.
+      const flipX = 1;
       const scaleX = svgRect.width / 800;
       const scaleY = svgRect.height / 400;
       const pixelX = point.x * scaleX;
@@ -864,8 +865,8 @@ export default function InteractiveTrain({ showControls = true }: InteractiveTra
               <circle cx="34" cy="25" r="5" fill="#1a1d28"/>
               <circle cx="34" cy="25" r="4" fill="#2a2a3a"/>
               <circle cx="34" cy="25" r="1.5" fill="#d4a843"/>
-              {/* Coupling rods */}
-              <rect x="34" y="23.5" width="26" height="2" rx="1" fill="#b8942f"/>
+              {/* Coupling rods — centered on wheel axle at y=25 */}
+              <rect x="34" y="24" width="26" height="2" rx="1" fill="#b8942f"/>
               {/* Cowcatcher — RIGHT side (front) */}
               <path d="M 68 20 L 70 26 L 66 26 L 64 23 Z" fill="#c9a033"/>
               <line x1="69" y1="21" x2="68.5" y2="26" stroke="#8a7020" strokeWidth="0.5"/>
