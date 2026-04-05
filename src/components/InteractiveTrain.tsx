@@ -862,11 +862,11 @@ export default function InteractiveTrain({ showControls = true }: InteractiveTra
             {SIGNAL_POSITIONS.map(sig => {
               const active = activeSignals.has(sig.id);
               return (
-                <g key={sig.id} 
+                <g key={sig.id}
                   style={{ cursor: 'pointer', pointerEvents: 'all' }}
+                  onMouseDown={(e) => { e.stopPropagation(); e.preventDefault(); }}
                   onClick={(e) => {
                     e.stopPropagation();
-                    e.preventDefault();
                     if (!isMuted) {
                       const s = new Audio("/sounds/train-move.mp3");
                       s.volume = 0.15;
