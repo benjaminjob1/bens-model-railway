@@ -437,10 +437,12 @@ export default function InteractiveTrain({ showControls = true }: InteractiveTra
       
       let angle = Math.atan2(dy, dx) * (180 / Math.PI);
       if (isRev) angle += 180;
-      // dx < 0 = moving RIGHT. Raw angle works, no flip.
-      // dx > 0 = moving LEFT. Need +180 AND flipX=-1 to correct both direction and orientation.
-      const rotation = dx > 0 ? angle + 180 : angle;
-      const flipX = dx > 0 ? 1 : -1;
+      // Boiler LEFT, Cowcatcher RIGHT. angle+180 rotates front toward motion direction.
+      // angle+180 at top=360° (front faces RIGHT) — flipX=-1 mirrors it to LEFT ✓.
+      // angle+180 at bottom=180° (front faces LEFT) — flipX=-1 mirrors it to RIGHT ✓.
+      // Both halves need flipX=-1 to avoid upside-down.
+      const rotation = angle + 180;
+      const flipX = -1;
       
       const pixelX = point.x * (svgRect.width / 800);
       const pixelY = point.y * (svgRect.height / 400);
