@@ -283,6 +283,7 @@ export default function InteractiveTrain({ showControls = true }: InteractiveTra
   const [isDragging, setIsDragging] = useState(false);
   const [trainAngle, setTrainAngle] = useState(0);
   const [trainScaleX, setTrainScaleX] = useState(1);
+  const [trainScaleY, setTrainScaleY] = useState(1);
   // Auto-whistle refs: interval starts at 30s, increases each trigger up to 30min
   const autoIntervalRef = useRef(30000); // ms
   const autoTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -437,30 +438,22 @@ export default function InteractiveTrain({ showControls = true }: InteractiveTra
       
       let angle = Math.atan2(dy, dx) * (180 / Math.PI);
       if (isRev) angle += 180;
-      // SVG has bilateral symmetry (vertical mirror). Rotating it 180° makes it appear upside-down.
-      // The "fix" for upside-down is to NOT use 180° rotation. Instead use flipX=-1 to achieve the same directional flip.
-      // Front faces RIGHT. We want front to face the motion direction.
-      // Bottom (dx<0, angle≈0°): rotation=0° (front=RIGHT), flipX=1 → front RIGHT ✓.
-      // Right (dx<0, angle≈90°): rotation=90° (front=DOWN). flipX=1 → front DOWN ✗ (should be RIGHT? wait, moving DOWN).
-      // Hmm: moving DOWN means y increases, so dy>0, dx≈0. angle≈90°. Motion direction: DOWN.
-      // Front at bottom of oval: should face FORWARD along the track, which is approximately RIGHT.
-      // Let me use dy to determine side. dy>0 = moving DOWN toward viewer.
-      // If dy>0 (bottom half): train is approaching viewer. Front should face RIGHT.
-      // If dy<0 (top half): train is moving AWAY. Front should face LEFT.
-      // But dy>0 at BOTTOM and dy<0 at TOP. So dy determines top/bottom.
-      // dx determines left/right motion.
-      // Let me use a different approach: use raw angle, always flipX=1, and accept that rotation 180° makes it upside-down.
-      // Then fix it with a conditional: if rotation is 90°-270°, use flipX=-1 instead.
       const rotation = angle;
-      const isUpsideDown = (rotation > 90 && rotation < 270);
-      const flipX = isUpsideDown ? -1 : 1;
+      const normalized = ((rotation % 360) + 360) % 360;
+      // Rotation between 90 and 270 degrees makes the train appear upside-down.
+      // We flip it vertically (scaleY = -1) in that range to keep wheels on the track.
+      const shouldFlipY = (normalized > 90 && normalized < 270);
+      const flipY = shouldFlipY ? -1 : 1;
       
-      const pixelX = point.x * (svgRect.width / 800);
-      const pixelY = point.y * (svgRect.height / 400);
+      const scaleX = svgRect.width / 800;
+      const scaleY_factor = svgRect.height / 400;
+      const pixelX = point.x * scaleX;
+      const pixelY = point.y * scaleY_factor;
       
       setTrainPos({ x: pixelX, y: pixelY });
       setTrainAngle(rotation);
-      setTrainScaleX(flipX);
+      setTrainScaleX(1); 
+      setTrainScaleY(flipY);
       
       const now = Date.now();
       if (now - lastTrailTime.current > 80) {
@@ -835,7 +828,7 @@ export default function InteractiveTrain({ showControls = true }: InteractiveTra
               left: trainPos.x,
               top: trainPos.y,
               opacity: visible ? 0.6 : 0,
-              transform: `translate(-50%, -50%) rotate(${trainAngle}deg) scaleX(${trainScaleX})`,
+              transform: `translate(-50%, -50%) rotate(${trainAngle}deg) scale(${trainScaleX}, ${trainScaleY})`,
             }}
           >
             <svg viewBox="0 0 70 30" fill="none">
