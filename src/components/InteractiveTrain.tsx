@@ -863,28 +863,31 @@ export default function InteractiveTrain({ showControls = true }: InteractiveTra
             {/* Signal indicators — shown in all layouts (positions scale with viewBox) */}
             {SIGNAL_POSITIONS.map(sig => {
               const active = activeSignals.has(sig.id);
+              const toggleSignal = (e: React.MouseEvent) => {
+                e.stopPropagation();
+                if (!isMuted) {
+                  const s = new Audio("/sounds/train-move.mp3");
+                  s.volume = 0.15;
+                  s.play().catch(() => {});
+                }
+                setActiveSignals(prev => {
+                  const next = new Set(prev);
+                  if (next.has(sig.id)) next.delete(sig.id);
+                  else next.add(sig.id);
+                  return next;
+                });
+              };
               return (
-                <g key={sig.id}
-                  style={{ cursor: 'pointer', pointerEvents: 'all' }}
-                  onPointerDown={(e) => { e.stopPropagation(); e.preventDefault(); }}
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    if (!isMuted) {
-                      const s = new Audio("/sounds/train-move.mp3");
-                      s.volume = 0.15;
-                      s.play().catch(() => {});
-                    }
-                    setActiveSignals(prev => {
-                      const next = new Set(prev);
-                      if (next.has(sig.id)) next.delete(sig.id);
-                      else next.add(sig.id);
-                      return next;
-                    });
-                  }}
+                <g key={sig.id} style={{ cursor: 'pointer', pointerEvents: 'all' }}
+                  onClick={toggleSignal}
+                  onMouseDown={(e) => { e.stopPropagation(); }}
                 >
                   <line x1={sig.x} y1={sig.y} x2={sig.x} y2={sig.y + 18} stroke={active ? '#22c55e' : '#ef4444'} strokeWidth="1.5" opacity="0.6" pointerEvents="none"/>
                   {/* Larger invisible tap target + visible circle */}
-                  <circle cx={sig.x} cy={sig.y} r="22" fill="transparent" style={{ cursor: 'pointer' }} pointerEvents="all" />
+                  <circle cx={sig.x} cy={sig.y} r="22" fill="transparent" style={{ cursor: 'pointer' }}
+                    onClick={toggleSignal}
+                    onMouseDown={(e) => { e.stopPropagation(); }}
+                  />
                   <circle cx={sig.x} cy={sig.y} r="6" fill={active ? '#22c55e' : '#ef4444'} opacity={active ? 1 : 0.8}
                     style={{ filter: active ? 'drop-shadow(0 0 5px #22c55e)' : 'drop-shadow(0 0 4px #ef4444)' }} pointerEvents="none" />
                   {active && <circle cx={sig.x} cy={sig.y} r="10" fill="none" stroke="#22c55e" strokeWidth="1.5" opacity="0.5" pointerEvents="none" />}
