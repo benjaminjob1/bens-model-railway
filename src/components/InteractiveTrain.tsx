@@ -437,20 +437,20 @@ export default function InteractiveTrain({ showControls = true }: InteractiveTra
       // Angle from atan2 gives direction from current point to next point.
       let angle = Math.atan2(dy, dx) * (180 / Math.PI);
       if (isRev) angle += 180;
-      // SVG faces right. Counterclockwise oval: top(26°)→right(90°)→bottom(154°)→left(270°).
-      // Bottom (|154|>90): keep angle=154 → facing left+backward ← train SHOULD face backward at bottom ✓
-      // Left (|270|>90): keep angle=270 → cowcatcher points UP ✓
-      // Top (|26|≤90): negate → -26° → cowcatcher points RIGHT ✓
-      // Right (|-90|≤90): negate → 90° → cowcatcher points DOWN ✓
-      const effectiveAngle = Math.abs(angle) > 90 ? angle : -angle;
-      const flipX = Math.abs(angle) > 90 ? -1 : 1;
-      const scaleX = svgRect.width / 800;
-      const scaleY = svgRect.height / 400;
-      const pixelX = point.x * scaleX;
-      const pixelY = point.y * scaleY;
+
+      // SVG orientation: Cowcatcher/Headlight (FRONT) on LEFT, Smokebox (BACK) on RIGHT.
+      // We need cowcatcher leading at all positions.
+      // Top: y<200, angle≈26°. Raw: front faces right-down. Needs flipX=1.
+      // Right: x>400, angle≈90°. Raw: front faces down. Needs flipX=1.
+      // Bottom: y>200, angle≈154°. Raw: front faces up-left (upside down). Needs flipX=-1 to correct.
+      // Left: x<400, angle≈270°. Raw: front faces right-up. Needs flipX=-1 to correct.
       
-      setTrainPos({ x: pixelX, y: pixelY });
-      setTrainAngle(effectiveAngle);
+      const isBottom = point.y > 200;
+      const isLeft = point.x < 300; // Left side of oval
+      const flipX = (isBottom || isLeft) ? -1 : 1;
+      
+      setTrainPos({ x: point.x * (svgRect.width / 800), y: point.y * (svgRect.height / 400) });
+      setTrainAngle(angle);
       setTrainScaleX(flipX);
       
       const now = Date.now();
