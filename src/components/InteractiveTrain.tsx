@@ -294,15 +294,10 @@ export default function InteractiveTrain({ showControls = true }: InteractiveTra
   useEffect(() => { trainPosRef.current = trainPos; }, [trainPos]);
   const [smokeParticles, setSmokeParticles] = useState<Array<{ id: number; x: number; y: number; age: number }>>([]);
   const [activeSignals, setActiveSignals] = useState<Set<string>>(new Set());
-  // Ambient engine sound — loop quietly in background
+  const smokeId = useRef(0);
   const ambientRef = useRef<HTMLAudioElement | null>(null);
   const hasInteractedRef = useRef(false);
 
-  // svgRect should always reflect the rendered SVG size so scale factors are correct
-  const scaleX = svgRect.width / 800;
-  const scaleY = svgRect.height / 400;
-  const smokeScaleX = scaleX;
-  const smokeScaleY = scaleY;
   const { isMuted } = useSound();
   const isMutedRef = useRef(isMuted);
   useEffect(() => { isMutedRef.current = isMuted; }, [isMuted]);
@@ -338,6 +333,7 @@ export default function InteractiveTrain({ showControls = true }: InteractiveTra
       window.removeEventListener('click', handleFirstInteraction);
       window.removeEventListener('touchstart', handleFirstInteraction);
     };
+  });
 
   // Signal positions on the default oval layout
   const SIGNAL_POSITIONS = [
