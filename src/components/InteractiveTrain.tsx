@@ -441,7 +441,14 @@ export default function InteractiveTrain({ showControls = true }: InteractiveTra
       if (isRev) angle += 180;
       // Simple orientation: train follows the path rotation. 
       // If the SVG faces right, rotate(angle) aligns it perfectly with the direction of travel.
-      const flipX = 1;
+      // SVG faces RIGHT (chimney at right, cab at left). Use scaleX=-1 when going
+      // horizontally so chimney leads. When going vertically, no flip needed.
+      const rad = (angle * Math.PI) / 180;
+      const sinA = Math.abs(Math.sin(rad));
+      const cosA = Math.cos(rad);
+      // |sin| < 0.5 means angle is near 0° or 180° — horizontal travel
+      // |cos| < 0.5 means angle is near ±90° — vertical travel
+      const flipX = sinA < 0.5 ? -1 : 1;
       const scaleX = svgRect.width / 800;
       const scaleY = svgRect.height / 400;
       const pixelX = point.x * scaleX;
