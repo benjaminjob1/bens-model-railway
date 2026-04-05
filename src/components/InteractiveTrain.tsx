@@ -72,24 +72,47 @@ function makeTerminus(ox: number, oy: number) {
 // ──────────────────────────────────────────────
 function makeJunction(ox: number, oy: number) {
   const outerRX = 330, outerRY = 155;
-  const innerRX = 230, innerRY = 100;
-  const rbx = ox + outerRX - 30, rby = oy;
-  const lbx = ox - outerRX + 30, lby = oy;
+  const innerRX = 210, innerRY = 95;
+  const rbx = ox + outerRX, rby = oy; // right side of oval
+  const lbx = ox - outerRX, lby = oy; // left side of oval
+
+  // Right branch splits from oval rightmost point (rbx, rby=oy)
+  // Goes UP from right side, stays within oval right bound
+  const rBranchEndX = rbx + 30; // just outside oval edge
+  const rBranchEndY = oy - 150;
+
+  // Left branch splits from oval leftmost point
+  const lBranchEndX = lbx - 30;
+  const lBranchEndY = oy + 150;
+
+  // Cross-overs connecting inner and outer ovals (makes it feel like a real network)
+  const crossTopY = oy - innerRY - 15;  // above inner oval, below outer
+  const crossBotY = oy + innerRY + 15;
 
   const parts = [
+    // Main outer oval (train travels this)
     { path: `M ${ox - outerRX} ${oy} A ${outerRX} ${outerRY} 0 0 1 ${ox + outerRX} ${oy} A ${outerRX} ${outerRY} 0 0 1 ${ox - outerRX} ${oy}`, trackWidth: 26, type: 'main' as const },
+    // Inner oval (reversing loop) - connected via cross-overs
     { path: `M ${ox - innerRX} ${oy} A ${innerRX} ${innerRY} 0 0 1 ${ox + innerRX} ${oy} A ${innerRX} ${innerRY} 0 0 1 ${ox - innerRX} ${oy}`, trackWidth: 18, type: 'main' as const },
-    { path: `M ${rbx} ${rby} L ${rbx + 80} ${rby - 30} A 90 75 0 0 1 ${rbx + 150} ${rby - 80} L ${rbx + 150} ${rby - 140}`, trackWidth: 18, type: 'branch' as const },
-    { path: `M ${lbx} ${lby} L ${lbx - 80} ${lby + 30} A 90 75 0 0 0 ${lbx - 150} ${lby + 80} L ${lbx - 150} ${lby + 140}`, trackWidth: 18, type: 'branch' as const },
-    { path: `M ${rbx + 100} ${rby - 60} L ${rbx + 160} ${rby - 60}`, trackWidth: 13, type: 'siding' as const },
-    { path: `M ${rbx + 130} ${rby - 100} L ${rbx + 130} ${rby - 145}`, trackWidth: 13, type: 'yard' as const },
-    { path: `M ${lbx - 100} ${lby + 60} L ${lbx - 160} ${lby + 60}`, trackWidth: 13, type: 'siding' as const },
-    { path: `M ${lbx - 130} ${lby + 100} L ${lbx - 130} ${lby + 145}`, trackWidth: 13, type: 'yard' as const },
+    // Top cross-over: connects outer oval top area to inner oval
+    { path: `M ${ox} ${oy - outerRY + 20} L ${ox} ${oy - innerRY - 10}`, trackWidth: 18, type: 'main' as const },
+    // Bottom cross-over: connects outer oval bottom area to inner oval
+    { path: `M ${ox - 40} ${oy + outerRY - 20} L ${ox - 40} ${oy + innerRY + 10}`, trackWidth: 18, type: 'main' as const },
+    // Right branch: splits from outer oval right side, goes up and right
+    { path: `M ${rbx} ${rby} L ${rbx + 20} ${rby - 25} A 80 65 0 0 1 ${rbx + 90} ${rby - 80} L ${rbx + 90} ${rby - 130}`, trackWidth: 18, type: 'branch' as const },
+    // Left branch: splits from outer oval left side, goes down and left
+    { path: `M ${lbx} ${lby} L ${lbx - 20} ${lby + 25} A 80 65 0 0 0 ${lbx - 90} ${lby + 80} L ${lbx - 90} ${lby + 130}`, trackWidth: 18, type: 'branch' as const },
+    // Sidings on right branch
+    { path: `M ${rbx + 60} ${rby - 60} L ${rbx + 130} ${rby - 60}`, trackWidth: 13, type: 'siding' as const },
+    { path: `M ${rbx + 90} ${rby - 90} L ${rbx + 90} ${rby - 135}`, trackWidth: 13, type: 'yard' as const },
+    // Sidings on left branch
+    { path: `M ${lbx - 60} ${lby + 60} L ${lbx - 130} ${lby + 60}`, trackWidth: 13, type: 'siding' as const },
+    { path: `M ${lbx - 90} ${lby + 90} L ${lbx - 90} ${lby + 135}`, trackWidth: 13, type: 'yard' as const },
   ];
   const stations = [
-    { x: ox, y: oy - innerRY - 10, label: 'CENTRAL JUNCTION' },
-    { x: rbx + 95, y: rby - 115, label: 'EASTERN BRANCH' },
-    { x: lbx - 95, y: lby + 115, label: 'WESTERN BRANCH' },
+    { x: ox, y: oy - innerRY - 25, label: 'CENTRAL JUNCTION' },
+    { x: rbx + 50, y: rby - 110, label: 'EASTERN BRANCH' },
+    { x: lbx - 50, y: lby + 110, label: 'WESTERN BRANCH' },
   ];
   return { parts, stations, name: "Dual Junction Network", desc: "Massive dual-branch layout spanning the full screen", viewBox: "0 0 800 400" };
 }
@@ -106,16 +129,21 @@ function makeFigure8(ox: number, oy: number) {
     { path: `M ${ox - rX} ${oy + gap/2} A ${rX} ${rY} 0 0 0 ${ox + rX} ${oy + gap/2} A ${rX} ${rY} 0 0 0 ${ox - rX} ${oy + gap/2}`, trackWidth: 24, type: 'main' as const },
     { path: `M ${ox - rX + gap/2} ${oy - gap/2} Q ${ox - rX/2 + gap/4} ${oy + gap/2} ${ox - rX + gap/2} ${oy + gap/2}`, trackWidth: 18, type: 'branch' as const },
     { path: `M ${ox + rX - gap/2} ${oy - gap/2} Q ${ox + rX/2 - gap/4} ${oy + gap/2} ${ox + rX - gap/2} ${oy + gap/2}`, trackWidth: 18, type: 'branch' as const },
-    { path: `M ${rightX + gap/2} ${oy - gap/2} L ${rightX + 60} ${oy - gap/2 - 40} A 80 65 0 0 1 ${rightX + 110} ${oy - gap/2 - 90} L ${rightX + 110} ${oy - gap/2 - 130}`, trackWidth: 17, type: 'branch' as const },
-    { path: `M ${leftX - gap/2} ${oy + gap/2} L ${leftX - 60} ${oy + gap/2 + 40} A 80 65 0 0 0 ${leftX - 110} ${oy + gap/2 + 90} L ${leftX - 110} ${oy + gap/2 + 130}`, trackWidth: 17, type: 'branch' as const },
-    { path: `M ${rightX + 80} ${oy - gap/2 - 60} L ${rightX + 130} ${oy - gap/2 - 60}`, trackWidth: 13, type: 'siding' as const },
-    { path: `M ${leftX - 80} ${oy + gap/2 + 60} L ${leftX - 130} ${oy + gap/2 + 60}`, trackWidth: 13, type: 'siding' as const },
+    // Right branch: split from outer oval rightmost point (620, 200), go UP within viewBox
+    { path: `M 620 ${oy} L 620 ${oy - 100} A 70 60 0 0 1 690 ${oy - 150} L 690 ${oy - 200}`, trackWidth: 17, type: 'branch' as const },
+    // Left branch: from outer oval leftmost point (180, 200), go DOWN within viewBox
+    { path: `M 180 ${oy} L 180 ${oy + 100} A 70 60 0 0 1 110 ${oy + 150} L 110 ${oy + 200}`, trackWidth: 17, type: 'branch' as const },
+    // Sidings
+    { path: `M 650 ${oy - 100} L 720 ${oy - 100}`, trackWidth: 13, type: 'siding' as const },
+    { path: `M 690 ${oy - 160} L 690 ${oy - 210}`, trackWidth: 13, type: 'yard' as const },
+    { path: `M 150 ${oy + 100} L 80 ${oy + 100}`, trackWidth: 13, type: 'siding' as const },
+    { path: `M 110 ${oy + 160} L 110 ${oy + 210}`, trackWidth: 13, type: 'yard' as const },
     { path: `M ${ox} ${oy - gap/2} L ${ox} ${oy - gap/2 - 30}`, trackWidth: 14, type: 'main' as const },
   ];
   const stations = [
     { x: ox - 80, y: oy - rY - gap/2 + 5, label: 'NORTH STATION' },
     { x: ox + 80, y: oy + rY + gap/2 - 5, label: 'SOUTH STATION' },
-    { x: rightX + 80, y: oy - gap/2 - 115, label: 'EAST BRANCH' },
+    { x: 650, y: oy - 80, label: 'EASTERN BRANCH' },
   ];
   return { parts, stations, name: "Figure-8 Express", desc: "Huge interconnected figure-8 spanning the full screen", viewBox: "0 0 800 400" };
 }
@@ -125,23 +153,35 @@ function makeFigure8(ox: number, oy: number) {
 // ──────────────────────────────────────────────
 function makeDepot(ox: number, oy: number) {
   const outerRX = 350, outerRY = 160;
-  const brX = ox, brY = oy - outerRY + 20;
+  const innerRX = 300, innerRY = 125;
+  // Oval: x 50→750, y 40→360
+  // Branches split from sides of oval (y=200) and extend DOWN within viewBox
+  const rightX = ox + outerRX - 10; // 740 — just inside right edge
+  const leftX = ox - outerRX + 10;   // 60  — just inside left edge
 
   const parts = [
+    // Main oval (train travels this)
     { path: `M ${ox - outerRX} ${oy} A ${outerRX} ${outerRY} 0 0 1 ${ox + outerRX} ${oy} A ${outerRX} ${outerRY} 0 0 1 ${ox - outerRX} ${oy}`, trackWidth: 26, type: 'main' as const },
+    // Inner oval (reversing loop)
     { path: `M ${ox - outerRX + 45} ${oy} A ${outerRX - 45} ${outerRY - 35} 0 0 1 ${ox + outerRX - 45} ${oy} A ${outerRX - 45} ${outerRY - 35} 0 0 1 ${ox - outerRX + 45} ${oy}`, trackWidth: 18, type: 'main' as const },
-    { path: `M ${brX} ${brY} L ${brX + 60} ${brY - 60} A 70 60 0 0 1 ${brX + 130} ${brY - 110}`, trackWidth: 20, type: 'branch' as const },
-    { path: `M ${brX + 70} ${brY - 60} L ${brX + 160} ${brY - 60}`, trackWidth: 16, type: 'yard' as const },
-    { path: `M ${brX + 130} ${brY - 30} L ${brX + 200} ${brY - 30}`, trackWidth: 16, type: 'yard' as const },
-    { path: `M ${brX + 165} ${brY - 60} L ${brX + 165} ${brY - 10}`, trackWidth: 14, type: 'siding' as const },
-    { path: `M ${ox - outerRX} ${oy} L ${ox - outerRX - 70} ${oy + 50} A 70 60 0 0 0 ${ox - outerRX - 130} ${oy + 90} L ${ox - outerRX - 130} ${oy + 140}`, trackWidth: 15, type: 'branch' as const },
-    { path: `M ${ox - 40} ${oy + outerRY + 50} L ${ox - 130} ${oy + outerRY + 50}`, trackWidth: 13, type: 'yard' as const },
-    { path: `M ${ox + 30} ${oy + outerRY + 90} L ${ox + 30} ${oy + outerRY + 140}`, trackWidth: 13, type: 'siding' as const },
+    // Right depot branch: from oval right side (740,200) extends DOWN-RIGHT
+    { path: `M ${rightX} ${oy} L ${rightX + 30} ${oy + 30} A 60 50 0 0 1 ${rightX + 80} ${oy + 80} L ${rightX + 80} ${oy + 150}`, trackWidth: 20, type: 'branch' as const },
+    // Engine shed roads off right branch
+    { path: `M ${rightX + 40} ${oy + 60} L ${rightX + 120} ${oy + 60}`, trackWidth: 16, type: 'yard' as const },
+    { path: `M ${rightX + 80} ${oy + 100} L ${rightX + 160} ${oy + 100}`, trackWidth: 16, type: 'yard' as const },
+    { path: `M ${rightX + 80} ${oy + 150} L ${rightX + 160} ${oy + 150}`, trackWidth: 14, type: 'siding' as const },
+    // Left depot branch: from oval left side (60,200) extends DOWN-LEFT
+    { path: `M ${leftX} ${oy} L ${leftX - 30} ${oy + 30} A 60 50 0 0 0 ${leftX - 80} ${oy + 80} L ${leftX - 80} ${oy + 150}`, trackWidth: 20, type: 'branch' as const },
+    // Freight sidings off left branch
+    { path: `M ${leftX - 40} ${oy + 60} L ${leftX - 120} ${oy + 60}`, trackWidth: 16, type: 'yard' as const },
+    { path: `M ${leftX - 80} ${oy + 100} L ${leftX - 160} ${oy + 100}`, trackWidth: 14, type: 'siding' as const },
+    // Central lead connecting inner and outer oval bottoms
+    { path: `M ${ox - 30} ${oy + outerRY - 30} L ${ox - 30} ${oy + innerRY + 20}`, trackWidth: 16, type: 'main' as const },
   ];
   const stations = [
     { x: ox, y: oy - outerRY - 10, label: 'MAIN DEADLINE' },
-    { x: brX + 90, y: brY - 70, label: 'ENGINE SHED' },
-    { x: ox - 80, y: oy + outerRY + 65, label: 'FREIGHT YARD' },
+    { x: rightX + 50, y: oy + 130, label: 'ENGINE SHED' },
+    { x: leftX - 50, y: oy + 130, label: 'FREIGHT YARD' },
   ];
   return { parts, stations, name: "Depot Complex", desc: "Massive depot with full-length engine shed roads", viewBox: "0 0 800 400" };
 }
