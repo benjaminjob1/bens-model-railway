@@ -437,12 +437,9 @@ export default function InteractiveTrain({ showControls = true }: InteractiveTra
       
       let angle = Math.atan2(dy, dx) * (180 / Math.PI);
       if (isRev) angle += 180;
-      // Front (right side of SVG) faces direction of travel naturally.
-      // Bottom: angle≈0°, front faces right. Top: angle≈180°, front faces left.
-      // Apply 180° offset so front points left when moving left, right when moving right.
-      const rotation = angle + 180;
-      // Flip horizontally when at bottom half (moving right) to keep train upright.
-      const flipX = (dx > 0) ? -1 : 1;
+      // No +180. Raw angle already points the RIGHT-side front in the direction of travel.
+      // Moving RIGHT (dx<0, angle≈0): flipX=-1 mirrors front to face right.
+      // Moving LEFT (dx>0, angle≈180): flipX=1 mirrors front to face left.
       
       const pixelX = point.x * (svgRect.width / 800);
       const pixelY = point.y * (svgRect.height / 400);
