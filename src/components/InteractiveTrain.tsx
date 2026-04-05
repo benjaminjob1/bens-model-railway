@@ -843,25 +843,30 @@ export default function InteractiveTrain({ showControls = true }: InteractiveTra
             {SIGNAL_POSITIONS.map(sig => {
               const active = activeSignals.has(sig.id);
               return (
-                <g key={sig.id} onClick={() => {
-                  if (!isMuted) {
-                    const s = new Audio("/sounds/train-move.mp3");
-                    s.volume = 0.15;
-                    s.play().catch(() => {});
-                  }
-                  setActiveSignals(prev => {
-                    const next = new Set(prev);
-                    if (next.has(sig.id)) next.delete(sig.id);
-                    else next.add(sig.id);
-                    return next;
-                  });
-                }} style={{ cursor: 'pointer' }}>
-                  <line x1={sig.x} y1={sig.y} x2={sig.x} y2={sig.y + 18} stroke={active ? '#22c55e' : '#ef4444'} strokeWidth="1.5" opacity="0.6"/>
+                <g key={sig.id} 
+                  style={{ cursor: 'pointer', pointerEvents: 'all' }}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    e.preventDefault();
+                    if (!isMuted) {
+                      const s = new Audio("/sounds/train-move.mp3");
+                      s.volume = 0.15;
+                      s.play().catch(() => {});
+                    }
+                    setActiveSignals(prev => {
+                      const next = new Set(prev);
+                      if (next.has(sig.id)) next.delete(sig.id);
+                      else next.add(sig.id);
+                      return next;
+                    });
+                  }}
+                >
+                  <line x1={sig.x} y1={sig.y} x2={sig.x} y2={sig.y + 18} stroke={active ? '#22c55e' : '#ef4444'} strokeWidth="1.5" opacity="0.6" pointerEvents="none"/>
                   {/* Larger invisible tap target + visible circle */}
-                  <circle cx={sig.x} cy={sig.y} r="14" fill="transparent" style={{ cursor: 'pointer' }}/>
-                  <circle cx={sig.x} cy={sig.y} r="5" fill={active ? '#22c55e' : '#ef4444'} opacity={active ? 0.9 : 0.7}
-                    style={{ filter: active ? 'drop-shadow(0 0 4px #22c55e)' : 'drop-shadow(0 0 3px #ef4444)' }}/>
-                  {active && <circle cx={sig.x} cy={sig.y} r="8" fill="none" stroke="#22c55e" strokeWidth="1" opacity="0.4"/>}
+                  <circle cx={sig.x} cy={sig.y} r="22" fill="transparent" style={{ cursor: 'pointer' }} pointerEvents="all" />
+                  <circle cx={sig.x} cy={sig.y} r="6" fill={active ? '#22c55e' : '#ef4444'} opacity={active ? 1 : 0.8}
+                    style={{ filter: active ? 'drop-shadow(0 0 5px #22c55e)' : 'drop-shadow(0 0 4px #ef4444)' }} pointerEvents="none" />
+                  {active && <circle cx={sig.x} cy={sig.y} r="10" fill="none" stroke="#22c55e" strokeWidth="1.5" opacity="0.5" pointerEvents="none" />}
                 </g>
               );
             })}
