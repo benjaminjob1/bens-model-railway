@@ -435,30 +435,32 @@ export default function InteractiveTrain({ showControls = true }: InteractiveTra
       const dx = nextPoint.x - point.x;
       const dy = nextPoint.y - point.y;
       // Angle from atan2 gives direction from current point to next point.
-      // Track is clockwise (based on coordinate simulation):
-      // Top: moves LEFT (raw angle ≈ 180°), Right side: moves DOWN (raw ≈ 90°), 
-      // Bottom: moves RIGHT (raw ≈ 0°), Left side: moves UP (raw ≈ -90°).
-      // SVG: Front (Cowcatcher) is on LEFT.
-      // 1. To point LEFT at raw=180°, effective angle should be 0°.
-      // 2. To point DOWN at raw=90°, effective angle should be 270°.
-      // 3. To point RIGHT at raw=0°, effective angle should be 180°.
-      // 4. To point UP at raw=-90°, effective angle should be 90°.
-      // Formula: effectiveAngle = (rawAngle + 180) % 360;
+      // Let's go back to absolute basics.
+      // 1. atan2 gives the motion vector angle.
+      // 2. The SVG train faces RIGHT in its default state (Cowcatcher on the LEFT).
+      // 3. To point the FRONT (left side of SVG) in the direction of motion, 
+      //    we rotate by (angle + 180).
+      let angle = (Math.atan2(dy, dx) * (180 / Math.PI)) + 180;
+      if (isRev) angle += 180;
+
+      // To prevent the train from appearing upside down when it's on the "return" 
+      // half of the loop (moving right, where angle is around 0/360), 
+      // we flip it vertically using scaleY if the rotation is in the "upside down" range.
+      // Normalize angle to 0-360
+      const normalizedAngle = ((angle % 360) + 360) % 360;
       
-      let rawAngle = Math.atan2(dy, dx) * (180 / Math.PI);
-      if (isRev) rawAngle += 180;
-      
-      // Calculate effective rotation and handle the upside-down flip.
-      // When pointing LEFT (around top/left), rotation is 0-90°, it's right-side up.
-      // When pointing RIGHT (around bottom/right), rotation is 180°, it appears upside-down.
-      const rotation = (rawAngle + 180);
-      const flipX = (Math.abs(rawAngle) < 90) ? -1 : 1;
+      // If the train is rotated between 90 and 270 degrees, it's "upside down" relative to the viewer.
+      // But wait, if we rotate 180 deg, the left-facing SVG faces right.
+      // Let's use a simpler rule: if it's moving RIGHT (angle ≈ 0 or 360), flip it.
+      const shouldFlip = normalizedAngle < 90 || normalizedAngle > 270;
+      const finalAngle = shouldFlip ? angle + 180 : angle;
+      const flipX = shouldFlip ? -1 : 1;
       
       const pixelX = point.x * (svgRect.width / 800);
       const pixelY = point.y * (svgRect.height / 400);
       
       setTrainPos({ x: pixelX, y: pixelY });
-      setTrainAngle(rotation);
+      setTrainAngle(finalAngle);
       setTrainScaleX(flipX);
       
       const now = Date.now();
