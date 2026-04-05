@@ -684,7 +684,7 @@ export default function InteractiveTrain({ showControls = true }: InteractiveTra
         .train-cursor {
           position: absolute;
           width: 60px; height: 26px;
-          pointer-events: all;
+          pointer-events: none;
           z-index: 3;
           cursor: grab;
           transform: translate(-50%, -50%);
@@ -783,8 +783,8 @@ export default function InteractiveTrain({ showControls = true }: InteractiveTra
           <svg 
             ref={svgRef}
             viewBox={currentViewBox} 
-            className="w-full h-full"
-            style={{ display: 'block' }}
+            width="100%" height="100%"
+            style={{ display: 'block', pointerEvents: 'none' }}
           >
             <defs>
               <filter id="railGlow" x="-50%" y="-50%" width="200%" height="200%">
@@ -857,48 +857,67 @@ export default function InteractiveTrain({ showControls = true }: InteractiveTra
               </g>
             ))}
 
-            {/* Signal indicators — shown in all layouts (positions scale with viewBox) */}
+            {/* Signal visuals only — click/touch handled by HTML overlay after SVG */}
             {SIGNAL_POSITIONS.map(sig => {
               const active = activeSignals.has(sig.id);
-              const toggleSignal = (e: React.MouseEvent) => {
-                e.stopPropagation();
-                e.preventDefault();
-                if (!isMuted) {
-                  const s = new Audio("/sounds/train-move.mp3");
-                  s.volume = 0.15;
-                  s.play().catch(() => {});
-                }
-                setActiveSignals(prev => {
-                  const next = new Set(prev);
-                  if (next.has(sig.id)) next.delete(sig.id);
-                  else next.add(sig.id);
-                  return next;
-                });
-              };
               return (
-                <g key={sig.id} style={{ cursor: 'pointer', touchAction: 'none' }}
-                  onClick={toggleSignal}
-                  onMouseDown={(e) => e.stopPropagation()}
-                >
-                  <line x1={sig.x} y1={sig.y} x2={sig.x} y2={sig.y + 18} stroke={active ? '#4ade80' : '#f87171'} strokeWidth="2" opacity="0.9" pointerEvents="none"/>
-                  <circle cx={sig.x} cy={sig.y} r="24" fill="rgba(255,255,255,0.05)" style={{ cursor: 'pointer' }} pointerEvents="all"
-                    onClick={(e) => { e.stopPropagation(); toggleSignal(e); }}
-                    onMouseDown={(e) => e.stopPropagation()}
-                  />
+                <g key={`sig-vis-${sig.id}`}>
+                  <line x1={sig.x} y1={sig.y} x2={sig.x} y2={sig.y + 18} stroke={active ? '#4ade80' : '#f87171'} strokeWidth="2" opacity="0.9"/>
                   <circle cx={sig.x} cy={sig.y} r="7" fill={active ? '#4ade80' : '#f87171'} opacity={active ? 1 : 0.9}
-                    style={{ filter: active ? 'drop-shadow(0 0 6px #4ade80)' : 'drop-shadow(0 0 5px #f87171)' }} pointerEvents="none" />
-                  {active && <circle cx={sig.x} cy={sig.y} r="12" fill="none" stroke="#4ade80" strokeWidth="2" opacity="0.6" pointerEvents="none" />}
+                    style={{ filter: active ? 'drop-shadow(0 0 6px #4ade80)' : 'drop-shadow(0 0 5px #f87171)' }} />
+                  {active && <circle cx={sig.x} cy={sig.y} r="12" fill="none" stroke="#4ade80" strokeWidth="2" opacity="0.6" />}
                 </g>
               );
             })}
 
-            {/* Hidden main path for train interaction — pointerEvents="none" so clicks pass through to signals beneath */}
-            <path ref={mainPathRef} d={mainTrackPath} fill="none" stroke="transparent" strokeWidth="50" pointerEvents="none"/>
+            {/* Hidden paths for train interaction — pointerEvents:stroke so dragging works */}
+            <path ref={mainPathRef} d={mainTrackPath} fill="none" stroke="transparent" strokeWidth="50" pointerEvents="stroke"/>
             {branchTrackPath && (
-              <path ref={branchPathRef} d={branchTrackPath} fill="none" stroke="transparent" strokeWidth="40" pointerEvents="none"/>
+              <path ref={branchPathRef} d={branchTrackPath} fill="none" stroke="transparent" strokeWidth="40" pointerEvents="stroke"/>
             )}
           </svg>
-          
+
+          {/* HTML signal buttons — reliable on iOS, sit above SVG and train */}
+          {SIGNAL_POSITIONS.map(sig => {
+            const active = activeSignals.has(sig.id);
+            const leftPct = (sig.x / 800) * 100;
+            const topPct = (sig.y / 400) * 100;
+            return (
+              <button key={sig.id}
+                onClick={() => {
+                  if (!isMuted) {
+                    const s = new Audio("/sounds/train-move.mp3");
+                    s.volume = 0.15;
+                    s.play().catch(() => {});
+                  }
+                  setActiveSignals(prev => {
+                    const next = new Set(prev);
+                    if (next.has(sig.id)) next.delete(sig.id);
+                    else next.add(sig.id);
+                    return next;
+                  });
+                }}
+                style={{
+                  position: 'absolute',
+                  left: `${leftPct}%`,
+                  top: `${topPct}%`,
+                  transform: 'translate(-50%, -50%)',
+                  width: 48,
+                  height: 48,
+                  borderRadius: '50%',
+                  background: active ? 'rgba(74,222,128,0.3)' : 'rgba(248,113,113,0.3)',
+                  border: `2px solid ${active ? '#4ade80' : '#f87171'}`,
+                  boxShadow: active ? '0 0 12px rgba(74,222,128,0.6)' : '0 0 12px rgba(248,113,113,0.5)',
+                  cursor: 'pointer',
+                  pointerEvents: 'all',
+                  zIndex: 10,
+                  padding: 0,
+                }}
+                aria-label={`Signal ${sig.id}`}
+              />
+            );
+          })}
+
           {/* Trail dots */}
           {trail.map(dot => (
             <div key={dot.id} className="train-trail-dot" style={{ left: dot.x, top: dot.y }}/>
