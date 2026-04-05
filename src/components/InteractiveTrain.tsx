@@ -439,15 +439,10 @@ export default function InteractiveTrain({ showControls = true }: InteractiveTra
       if (isRev) angle += 180;
 
       // SVG orientation: Cowcatcher/Headlight (FRONT) on LEFT, Smokebox (BACK) on RIGHT.
-      // We need cowcatcher leading at all positions.
-      // Top: y<200, angle≈26°. Raw: front faces right-down. Needs flipX=1.
-      // Right: x>400, angle≈90°. Raw: front faces down. Needs flipX=1.
-      // Bottom: y>200, angle≈154°. Raw: front faces up-left (upside down). Needs flipX=-1 to correct.
-      // Left: x<400, angle≈270°. Raw: front faces right-up. Needs flipX=-1 to correct.
-      
-      const isBottom = point.y > 200;
-      const isLeft = point.x < 300; // Left side of oval
-      const flipX = (isBottom || isLeft) ? -1 : 1;
+      // Track goes clockwise. Bottom (y>200): train moves LEFT, appears upside-down → flipX=-1 to correct.
+      // Left side (y=200, x<300): train moves UP, raw angle handles it correctly → no flip needed.
+      // Top (y<200): raw angle correct. Right (x>400): raw angle correct.
+      const flipX = isBottom ? -1 : 1;
       
       const scaleX = svgRect.width / 800;
       const scaleY = svgRect.height / 400;
