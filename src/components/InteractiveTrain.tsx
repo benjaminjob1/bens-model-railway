@@ -294,13 +294,12 @@ function genLayout(seed: number) {
 // ORIGINAL LAYOUT (from 2D track plan)
 // ──────────────────────────────────────────────
 const ORIGINAL_LAYOUT = {
-  // Main oval: narrower and shorter so the crossing tracks show outside it
-  // Oval: left(200,200)→top(400,100)→right(600,200)→bottom(400,300)→left, rx=200,ry=100
-  mainPath: "M 200 200 A 200 100 0 0 1 600 200 A 200 100 0 0 1 200 200",
-  // Top crossing loop: wider/taller than oval so it protrudes visibly (peak y=20, below oval top y=100)
-  branchPath: "M 200 200 A 180 90 0 0 1 400 20 A 180 90 0 0 1 600 200",
-  // Bottom crossing loop: also protrudes below oval (nadir y=380, above oval bottom y=300)
-  upMainPath: "M 600 200 A 180 90 0 0 0 400 380 A 180 90 0 0 0 200 200",
+  // Oval track: rx=250, ry=130. Peak y=70, nadir y=330, left x=150, right x=650.
+  mainPath: "M 150 200 A 250 130 0 0 1 650 200 A 250 130 0 0 1 150 200",
+  // Figure-8 crossing loop: same rx=250 so same width, offset vertically. Peak y=70, nadir y=330 — crosses OVER oval.
+  branchPath: "M 150 200 A 250 130 0 0 1 400 70 A 250 130 0 0 1 650 200",
+  // Figure-8 crossing loop 2: same rx=250, peak y=330, nadir y=70 — crosses UNDER oval.
+  upMainPath: "M 650 200 A 250 130 0 0 1 400 330 A 250 130 0 0 1 150 200",
 };
 
 // ──────────────────────────────────────────────
@@ -819,12 +818,15 @@ export default function InteractiveTrain({ showControls = true }: InteractiveTra
             {/* Junction markers — show physical connection points between tracks */}
             {trackMode === 'default' && (
               <g>
-                {/* Junction at (150,200): oval left = figure-8 crossing bottom-left / branch start */}
+                {/* Junction at (150,200): leftmost point where all tracks meet */}
                 <circle cx="150" cy="200" r="9" fill="#1a1d28" stroke="#d4a843" strokeWidth="2" opacity="0.9"/>
                 <circle cx="150" cy="200" r="4" fill="#d4a843" opacity="0.8"/>
-                {/* Junction at (650,200): oval right = figure-8 crossing bottom-right / branch end */}
+                {/* Junction at (650,200): rightmost point where all tracks meet */}
                 <circle cx="650" cy="200" r="9" fill="#1a1d28" stroke="#d4a843" strokeWidth="2" opacity="0.9"/>
                 <circle cx="650" cy="200" r="4" fill="#d4a843" opacity="0.8"/>
+                {/* Central crossing highlight */}
+                <circle cx="400" cy="200" r="9" fill="#1a1d28" stroke="#d4a843" strokeWidth="2" opacity="0.9"/>
+                <circle cx="400" cy="200" r="4" fill="#d4a843" opacity="0.8"/>
               </g>
             )}
             
