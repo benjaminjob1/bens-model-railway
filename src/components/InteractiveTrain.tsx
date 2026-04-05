@@ -437,19 +437,21 @@ export default function InteractiveTrain({ showControls = true }: InteractiveTra
       // Angle from atan2 gives direction from current point to next point.
       let angle = Math.atan2(dy, dx) * (180 / Math.PI);
       if (isRev) angle += 180;
-      // Pure rotation works for top (moving right) and right side (moving down).
-      // Bottom (moving left): train appears upside-down, needs scaleX=-1 to correct.
-      // Left side (moving up): pure rotation handles this correctly.
-      // Detect bottom by checking if train is in the lower half of the oval (y > center).
+      // SVG faces right. The oval goes counterclockwise.
+      // Bottom (y>200, moving left): rotate(180) makes train upside-down.
+      // Fix: use rotate(0) + scaleX(-1) — this gives the same final orientation as 
+      // rotate(180) alone but without the upside-down. rotate(0)*scaleX(-1) = rotate(180)*scaleX(1).
+      // All other positions: pure rotation works correctly.
       const isBottom = point.y > 200;
       const flipX = isBottom ? -1 : 1;
+      const effectiveAngle = isBottom ? 0 : angle;
       const scaleX = svgRect.width / 800;
       const scaleY = svgRect.height / 400;
       const pixelX = point.x * scaleX;
       const pixelY = point.y * scaleY;
       
       setTrainPos({ x: pixelX, y: pixelY });
-      setTrainAngle(angle);
+      setTrainAngle(effectiveAngle);
       setTrainScaleX(flipX);
       
       const now = Date.now();
