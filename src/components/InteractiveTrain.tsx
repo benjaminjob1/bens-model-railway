@@ -435,19 +435,31 @@ export default function InteractiveTrain({ showControls = true }: InteractiveTra
       const dx = nextPoint.x - point.x;
       const dy = nextPoint.y - point.y;
       // Angle from atan2 gives direction from current point to next point.
-      // SVG orientation: Cowcatcher/Headlight (FRONT) on LEFT, Smokebox (BACK) on RIGHT.
-      // 1. atan2(dy, dx) gives the direction of travel.
-      // 2. Since FRONT is on LEFT, we need to rotate 180° to point FRONT toward dx/dy.
-      // 3. No flips (flipX=1) to keep it stable.
-      let angle = (Math.atan2(dy, dx) * (180 / Math.PI)) + 180;
-      if (isRev) angle += 180;
+      // Track is clockwise (based on coordinate simulation):
+      // Top: moves LEFT (raw angle ≈ 180°), Right side: moves DOWN (raw ≈ 90°), 
+      // Bottom: moves RIGHT (raw ≈ 0°), Left side: moves UP (raw ≈ -90°).
+      // SVG: Front (Cowcatcher) is on LEFT.
+      // 1. To point LEFT at raw=180°, effective angle should be 0°.
+      // 2. To point DOWN at raw=90°, effective angle should be 270°.
+      // 3. To point RIGHT at raw=0°, effective angle should be 180°.
+      // 4. To point UP at raw=-90°, effective angle should be 90°.
+      // Formula: effectiveAngle = (rawAngle + 180) % 360;
       
-      setTrainPos({ x: point.x * (svgRect.width / 800), y: point.y * (svgRect.height / 400) });
-      setTrainAngle(angle);
-      setTrainScaleX(1);
+      let rawAngle = Math.atan2(dy, dx) * (180 / Math.PI);
+      if (isRev) rawAngle += 180;
+      
+      // Calculate effective rotation and handle the upside-down flip.
+      // When pointing LEFT (around top/left), rotation is 0-90°, it's right-side up.
+      // When pointing RIGHT (around bottom/right), rotation is 180°, it appears upside-down.
+      const rotation = (rawAngle + 180);
+      const flipX = (Math.abs(rawAngle) < 90) ? -1 : 1;
       
       const pixelX = point.x * (svgRect.width / 800);
       const pixelY = point.y * (svgRect.height / 400);
+      
+      setTrainPos({ x: pixelX, y: pixelY });
+      setTrainAngle(rotation);
+      setTrainScaleX(flipX);
       
       const now = Date.now();
       if (now - lastTrailTime.current > 80) {
