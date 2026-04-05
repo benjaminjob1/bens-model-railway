@@ -437,12 +437,23 @@ export default function InteractiveTrain({ showControls = true }: InteractiveTra
       
       let angle = Math.atan2(dy, dx) * (180 / Math.PI);
       if (isRev) angle += 180;
-      // Boiler LEFT, Cowcatcher RIGHT. angle+180 rotates front toward motion direction.
-      // angle+180 at top=360° (front faces RIGHT) — flipX=-1 mirrors it to LEFT ✓.
-      // angle+180 at bottom=180° (front faces LEFT) — flipX=-1 mirrors it to RIGHT ✓.
-      // Both halves need flipX=-1 to avoid upside-down.
-      const rotation = angle + 180;
-      const flipX = -1;
+      // SVG has bilateral symmetry (vertical mirror). Rotating it 180° makes it appear upside-down.
+      // The "fix" for upside-down is to NOT use 180° rotation. Instead use flipX=-1 to achieve the same directional flip.
+      // Front faces RIGHT. We want front to face the motion direction.
+      // Bottom (dx<0, angle≈0°): rotation=0° (front=RIGHT), flipX=1 → front RIGHT ✓.
+      // Right (dx<0, angle≈90°): rotation=90° (front=DOWN). flipX=1 → front DOWN ✗ (should be RIGHT? wait, moving DOWN).
+      // Hmm: moving DOWN means y increases, so dy>0, dx≈0. angle≈90°. Motion direction: DOWN.
+      // Front at bottom of oval: should face FORWARD along the track, which is approximately RIGHT.
+      // Let me use dy to determine side. dy>0 = moving DOWN toward viewer.
+      // If dy>0 (bottom half): train is approaching viewer. Front should face RIGHT.
+      // If dy<0 (top half): train is moving AWAY. Front should face LEFT.
+      // But dy>0 at BOTTOM and dy<0 at TOP. So dy determines top/bottom.
+      // dx determines left/right motion.
+      // Let me use a different approach: use raw angle, always flipX=1, and accept that rotation 180° makes it upside-down.
+      // Then fix it with a conditional: if rotation is 90°-270°, use flipX=-1 instead.
+      const rotation = angle;
+      const isUpsideDown = (rotation > 90 && rotation < 270);
+      const flipX = isUpsideDown ? -1 : 1;
       
       const pixelX = point.x * (svgRect.width / 800);
       const pixelY = point.y * (svgRect.height / 400);
