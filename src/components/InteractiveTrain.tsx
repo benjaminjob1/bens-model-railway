@@ -440,12 +440,14 @@ export default function InteractiveTrain({ showControls = true }: InteractiveTra
       // No +180. Raw angle already points the RIGHT-side front in the direction of travel.
       // Moving RIGHT (dx<0, angle≈0): flipX=-1 mirrors front to face right.
       // Moving LEFT (dx>0, angle≈180): flipX=1 mirrors front to face left.
+      const flipX = dx > 0 ? 1 : -1;
+      const rotation = angle;
       
       const pixelX = point.x * (svgRect.width / 800);
       const pixelY = point.y * (svgRect.height / 400);
       
       setTrainPos({ x: pixelX, y: pixelY });
-      setTrainAngle(angle);
+      setTrainAngle(rotation);
       setTrainScaleX(flipX);
       
       const now = Date.now();
