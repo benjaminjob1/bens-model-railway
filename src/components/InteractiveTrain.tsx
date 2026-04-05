@@ -294,12 +294,12 @@ function genLayout(seed: number) {
 // ORIGINAL LAYOUT (from 2D track plan)
 // ──────────────────────────────────────────────
 const ORIGINAL_LAYOUT = {
-  // Complete counterclockwise oval: left(150,200) → top(400,80) → right(650,200) → bottom(400,320) → left
-  mainPath: "M 150 200 Q 150 80 400 80 Q 650 80 650 200 Q 650 320 400 320 Q 150 320 150 200",
-  // Branch from oval right (650,200) — goes right/up and returns to oval bottom (490,310)
-  branchPath: "M 650 200 L 720 200 A 35 35 0 0 1 720 130 L 650 130 A 30 30 0 0 1 650 100 L 590 100 A 25 25 0 0 1 590 75 L 530 75 A 20 20 0 0 1 530 55 L 490 55 A 35 35 0 0 0 490 125 Q 490 310 490 310",
-  // Station loop: splits from oval top-left (250,80), goes up and returns to oval right side (550,200)
-  upMainPath: "M 250 80 L 250 25 A 30 30 0 0 1 310 25 L 310 35 A 45 35 0 0 1 400 35 L 400 25 A 50 40 0 0 1 500 25 L 550 25 A 40 35 0 0 1 550 95 Q 550 200 550 200",
+  // Main oval: counterclockwise around the border, leaving the center open for the figure-8
+  mainPath: "M 150 200 A 250 160 0 0 1 650 200 A 250 160 0 0 1 150 200",
+  // Figure-8 top loop: leaves oval left (150,200), arcs up above oval (peak y=0), returns to oval right (650,200)
+  branchPath: "M 150 200 A 125 80 0 0 1 400 0 A 125 80 0 0 1 650 200",
+  // Figure-8 bottom loop: leaves oval right (650,200), arcs below oval (peak y=400), returns to oval left (150,200)
+  upMainPath: "M 650 200 A 125 80 0 0 0 400 400 A 125 80 0 0 0 150 200",
 };
 
 // ──────────────────────────────────────────────
@@ -421,7 +421,7 @@ export default function InteractiveTrain({ showControls = true }: InteractiveTra
 
   const currentViewBox = trackMode === 'default' ? '0 0 800 400' : randomLayout.viewBox;
   const currentStations = trackMode === 'default' 
-    ? [{ x: 400, y: 160, label: 'STATION' }]
+    ? [{ x: 400, y: 200, label: 'CENTRAL' }]
     : randomLayout.stations;
 
   // Auto-whistle: runs smoke + whistle at increasing intervals (30s → 1m → 2m → 3m → 5m → ... → 30m)
@@ -818,18 +818,12 @@ export default function InteractiveTrain({ showControls = true }: InteractiveTra
             {/* Junction markers — show physical connection points between tracks */}
             {trackMode === 'default' && (
               <g>
-                {/* Junction at (650,200): oval right connects to branchPath */}
+                {/* Junction at (150,200): oval left = figure-8 crossing bottom-left / branch start */}
+                <circle cx="150" cy="200" r="9" fill="#1a1d28" stroke="#d4a843" strokeWidth="2" opacity="0.9"/>
+                <circle cx="150" cy="200" r="4" fill="#d4a843" opacity="0.8"/>
+                {/* Junction at (650,200): oval right = figure-8 crossing bottom-right / branch end */}
                 <circle cx="650" cy="200" r="9" fill="#1a1d28" stroke="#d4a843" strokeWidth="2" opacity="0.9"/>
                 <circle cx="650" cy="200" r="4" fill="#d4a843" opacity="0.8"/>
-                {/* Junction at (490,310): branchPath returns to oval bottom-right */}
-                <circle cx="490" cy="310" r="9" fill="#1a1d28" stroke="#d4a843" strokeWidth="2" opacity="0.9"/>
-                <circle cx="490" cy="310" r="4" fill="#d4a843" opacity="0.8"/>
-                {/* Junction at (250,80): oval top-left connects to upMainPath */}
-                <circle cx="250" cy="80" r="9" fill="#1a1d28" stroke="#d4a843" strokeWidth="2" opacity="0.9"/>
-                <circle cx="250" cy="80" r="4" fill="#d4a843" opacity="0.8"/>
-                {/* Junction at (550,200): upMainPath returns to oval right side */}
-                <circle cx="550" cy="200" r="9" fill="#1a1d28" stroke="#d4a843" strokeWidth="2" opacity="0.9"/>
-                <circle cx="550" cy="200" r="4" fill="#d4a843" opacity="0.8"/>
               </g>
             )}
             
@@ -863,7 +857,7 @@ export default function InteractiveTrain({ showControls = true }: InteractiveTra
             {/* Signal indicators — shown in all layouts (positions scale with viewBox) */}
             {SIGNAL_POSITIONS.map(sig => {
               const active = activeSignals.has(sig.id);
-              const toggleSignal = (e: React.MouseEvent | React.TouchEvent) => {
+              const toggleSignal = (e: React.MouseEvent) => {
                 e.stopPropagation();
                 e.preventDefault();
                 if (!isMuted) {
@@ -879,16 +873,13 @@ export default function InteractiveTrain({ showControls = true }: InteractiveTra
                 });
               };
               return (
-                <g key={sig.id} style={{ cursor: 'pointer', pointerEvents: 'all' }}
+                <g key={sig.id} style={{ cursor: 'pointer', touchAction: 'none' }}
                   onClick={toggleSignal}
-                  onTouchStart={toggleSignal}
                   onMouseDown={(e) => e.stopPropagation()}
                 >
                   <line x1={sig.x} y1={sig.y} x2={sig.x} y2={sig.y + 18} stroke={active ? '#22c55e' : '#ef4444'} strokeWidth="1.5" opacity="0.6" pointerEvents="none"/>
-                  {/* Larger invisible tap target + visible circle */}
-                  <circle cx={sig.x} cy={sig.y} r="22" fill="transparent" style={{ cursor: 'pointer' }} pointerEvents="all"
-                    onClick={toggleSignal}
-                    onTouchStart={toggleSignal}
+                  <circle cx={sig.x} cy={sig.y} r="24" fill="rgba(255,255,255,0.05)" style={{ cursor: 'pointer' }} pointerEvents="all"
+                    onClick={(e) => { e.stopPropagation(); toggleSignal(e); }}
                     onMouseDown={(e) => e.stopPropagation()}
                   />
                   <circle cx={sig.x} cy={sig.y} r="6" fill={active ? '#22c55e' : '#ef4444'} opacity={active ? 1 : 0.8}
