@@ -434,33 +434,22 @@ export default function InteractiveTrain({ showControls = true }: InteractiveTra
       const { point: nextPoint } = getPointAtProgress(Math.min(p + delta, 0.9999));
       const dx = nextPoint.x - point.x;
       const dy = nextPoint.y - point.y;
-      // Angle from atan2 gives direction from current point to next point.
-      // Let's go back to absolute basics.
-      // 1. atan2 gives the motion vector angle.
-      // 2. The SVG train faces RIGHT in its default state (Cowcatcher on the LEFT).
-      // 3. To point the FRONT (left side of SVG) in the direction of motion, 
-      //    we rotate by (angle + 180).
-      let angle = (Math.atan2(dy, dx) * (180 / Math.PI)) + 180;
+      
+      // 1. Calculate the movement angle
+      let angle = Math.atan2(dy, dx) * (180 / Math.PI);
       if (isRev) angle += 180;
 
-      // To prevent the train from appearing upside down when it's on the "return" 
-      // half of the loop (moving right, where angle is around 0/360), 
-      // we flip it vertically using scaleY if the rotation is in the "upside down" range.
-      // Normalize angle to 0-360
-      const normalizedAngle = ((angle % 360) + 360) % 360;
+      // 2. Front is on the LEFT of the SVG. Point it toward the motion.
+      const rotation = angle + 180;
       
-      // If the train is rotated between 90 and 270 degrees, it's "upside down" relative to the viewer.
-      // But wait, if we rotate 180 deg, the left-facing SVG faces right.
-      // Let's use a simpler rule: if it's moving RIGHT (angle ≈ 0 or 360), flip it.
-      const shouldFlip = normalizedAngle < 90 || normalizedAngle > 270;
-      const finalAngle = shouldFlip ? angle + 180 : angle;
-      const flipX = shouldFlip ? -1 : 1;
+      // 3. Simple flip: if moving generally RIGHT (x component > 0), flip horizontally.
+      const flipX = dx > 0 ? -1 : 1;
       
       const pixelX = point.x * (svgRect.width / 800);
       const pixelY = point.y * (svgRect.height / 400);
       
       setTrainPos({ x: pixelX, y: pixelY });
-      setTrainAngle(finalAngle);
+      setTrainAngle(rotation);
       setTrainScaleX(flipX);
       
       const now = Date.now();
