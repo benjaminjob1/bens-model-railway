@@ -435,23 +435,19 @@ export default function InteractiveTrain({ showControls = true }: InteractiveTra
       const dx = nextPoint.x - point.x;
       const dy = nextPoint.y - point.y;
       // Angle from atan2 gives direction from current point to next point.
-      let angle = Math.atan2(dy, dx) * (180 / Math.PI);
-      if (isRev) angle += 180;
-
       // SVG orientation: Cowcatcher/Headlight (FRONT) on LEFT, Smokebox (BACK) on RIGHT.
-      // Track goes clockwise. Bottom (y>200): train moves LEFT, appears upside-down → flipX=-1 to correct.
-      // Left side (y=200, x<300): train moves UP, raw angle handles it correctly → no flip needed.
-      // Top (y<200): raw angle correct. Right (x>400): raw angle correct.
-      const flipX = isBottom ? -1 : 1;
+      // 1. atan2(dy, dx) gives the direction of travel.
+      // 2. Since FRONT is on LEFT, we need to rotate 180° to point FRONT toward dx/dy.
+      // 3. No flips (flipX=1) to keep it stable.
+      let angle = (Math.atan2(dy, dx) * (180 / Math.PI)) + 180;
+      if (isRev) angle += 180;
       
-      const scaleX = svgRect.width / 800;
-      const scaleY = svgRect.height / 400;
-      const pixelX = point.x * scaleX;
-      const pixelY = point.y * scaleY;
-      
-      setTrainPos({ x: pixelX, y: pixelY });
+      setTrainPos({ x: point.x * (svgRect.width / 800), y: point.y * (svgRect.height / 400) });
       setTrainAngle(angle);
-      setTrainScaleX(flipX);
+      setTrainScaleX(1);
+      
+      const pixelX = point.x * (svgRect.width / 800);
+      const pixelY = point.y * (svgRect.height / 400);
       
       const now = Date.now();
       if (now - lastTrailTime.current > 80) {
