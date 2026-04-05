@@ -443,8 +443,8 @@ export default function InteractiveTrain({ showControls = true }: InteractiveTra
       const rotation = angle + 180;
       
       // 3. Simple flip: if moving generally RIGHT (x component > 0), flip horizontally.
-      // dx > 0: train moving LEFT (top half). flipX = 1 (no transform).
-      // dx < 0: train moving RIGHT (bottom half). flipX = -1 (correct upside-down).
+      // dx > 0 (moving LEFT): front should face left → flipX = 1 (no mirror, SVG front already left)
+      // dx < 0 (moving RIGHT): front should face right → flipX = -1 (mirror SVG to flip left→right)
       const flipX = dx > 0 ? 1 : -1;
       
       const pixelX = point.x * (svgRect.width / 800);
