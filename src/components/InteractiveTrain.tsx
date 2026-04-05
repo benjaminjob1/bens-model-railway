@@ -53,12 +53,12 @@ function makeTerminus(ox: number, oy: number) {
     { path: `M ${ox - outerRX} ${oy} A ${outerRX} ${outerRY} 0 0 1 ${ox + outerRX} ${oy} A ${outerRX} ${outerRY} 0 0 1 ${ox - outerRX} ${oy}`, trackWidth: 24, type: 'main' as const },
     { path: `M ${ox - outerRX + 50} ${oy} A ${outerRX - 50} ${outerRY - 40} 0 0 1 ${ox + outerRX - 50} ${oy} A ${outerRX - 50} ${outerRY - 40} 0 0 1 ${ox - outerRX + 50} ${oy}`, trackWidth: 17, type: 'main' as const },
     { path: `M ${ox + outerRX} ${oy} L ${ox + outerRX + 60} ${oy - 30} A 70 60 0 0 1 ${ox + outerRX + 130} ${oy - 110} L ${ox + outerRX + 130} ${oy - 210}`, trackWidth: 18, type: 'branch' as const },
-    { path: `M ${ox + 130} ${termY - 160} L ${ox + 250} ${termY - 160} L ${ox + 250} ${termY - 100}`, trackWidth: 16, type: 'siding' as const },
-    { path: `M ${ox + 130} ${termY - 110} L ${ox + 250} ${termY - 110} L ${ox + 250} ${termY - 55}`, trackWidth: 14, type: 'siding' as const },
-    { path: `M ${ox + 250} ${termY - 55} Q ${ox + 300} ${oy - outerRY + 10} ${ox + outerRX} ${oy}`, trackWidth: 15, type: 'main' as const },
-    { path: `M ${ox - 30} ${oy + outerRY - 10} L ${ox - 30} ${oy + outerRY + 80} A 60 50 0 0 0 ${ox + 40} ${oy + outerRY + 130}`, trackWidth: 14, type: 'branch' as const },
-    { path: `M ${ox + 170} ${termY - 185} L ${ox + 170} ${termY - 240}`, trackWidth: 12, type: 'yard' as const },
-    { path: `M ${ox + 210} ${termY - 160} L ${ox + 260} ${termY - 160}`, trackWidth: 12, type: 'siding' as const },
+    { path: `M ${ox + 130} ${termY - 80} L ${ox + 250} ${termY - 80} L ${ox + 250} ${termY - 20}`, trackWidth: 16, type: 'siding' as const },
+    { path: `M ${ox + 130} ${termY - 30} L ${ox + 250} ${termY - 30} L ${ox + 250} ${termY + 25}`, trackWidth: 14, type: 'siding' as const },
+    { path: `M ${ox + 250} ${termY + 25} Q ${ox + 300} ${oy - outerRY + 10} ${ox + outerRX} ${oy}`, trackWidth: 15, type: 'main' as const },
+    { path: `M ${ox - 30} ${oy + outerRY - 10} L ${ox - 30} ${oy + outerRY + 60} A 60 50 0 0 0 ${ox + 40} ${oy + outerRY + 110}`, trackWidth: 14, type: 'branch' as const },
+    { path: `M ${ox + 170} ${termY - 105} L ${ox + 170} ${termY - 160}`, trackWidth: 12, type: 'yard' as const },
+    { path: `M ${ox + 210} ${termY - 80} L ${ox + 260} ${termY - 80}`, trackWidth: 12, type: 'siding' as const },
   ];
   const stations = [
     { x: ox, y: oy - outerRY - 10, label: 'MAIN LINE' },
@@ -79,12 +79,12 @@ function makeJunction(ox: number, oy: number) {
   const parts = [
     { path: `M ${ox - outerRX} ${oy} A ${outerRX} ${outerRY} 0 0 1 ${ox + outerRX} ${oy} A ${outerRX} ${outerRY} 0 0 1 ${ox - outerRX} ${oy}`, trackWidth: 26, type: 'main' as const },
     { path: `M ${ox - innerRX} ${oy} A ${innerRX} ${innerRY} 0 0 1 ${ox + innerRX} ${oy} A ${innerRX} ${innerRY} 0 0 1 ${ox - innerRX} ${oy}`, trackWidth: 18, type: 'main' as const },
-    { path: `M ${rbx} ${rby} L ${rbx + 100} ${rby - 40} A 90 75 0 0 1 ${rbx + 190} ${rby - 120} L ${rbx + 190} ${rby - 220}`, trackWidth: 18, type: 'branch' as const },
-    { path: `M ${lbx} ${lby} L ${lbx - 100} ${lby + 40} A 90 75 0 0 0 ${lbx - 190} ${lby + 120} L ${lbx - 190} ${lby + 220}`, trackWidth: 18, type: 'branch' as const },
-    { path: `M ${rbx + 120} ${rby - 80} L ${rbx + 180} ${rby - 80}`, trackWidth: 13, type: 'siding' as const },
-    { path: `M ${rbx + 150} ${rby - 120} L ${rbx + 150} ${rby - 195}`, trackWidth: 13, type: 'yard' as const },
-    { path: `M ${lbx - 120} ${lby + 80} L ${lbx - 180} ${lby + 80}`, trackWidth: 13, type: 'siding' as const },
-    { path: `M ${lbx - 150} ${lby + 120} L ${lbx - 150} ${lby + 195}`, trackWidth: 13, type: 'yard' as const },
+    { path: `M ${rbx} ${rby} L ${rbx + 80} ${rby - 30} A 90 75 0 0 1 ${rbx + 150} ${rby - 80} L ${rbx + 150} ${rby - 140}`, trackWidth: 18, type: 'branch' as const },
+    { path: `M ${lbx} ${lby} L ${lbx - 80} ${lby + 30} A 90 75 0 0 0 ${lbx - 150} ${lby + 80} L ${lbx - 150} ${lby + 140}`, trackWidth: 18, type: 'branch' as const },
+    { path: `M ${rbx + 100} ${rby - 60} L ${rbx + 160} ${rby - 60}`, trackWidth: 13, type: 'siding' as const },
+    { path: `M ${rbx + 130} ${rby - 100} L ${rbx + 130} ${rby - 145}`, trackWidth: 13, type: 'yard' as const },
+    { path: `M ${lbx - 100} ${lby + 60} L ${lbx - 160} ${lby + 60}`, trackWidth: 13, type: 'siding' as const },
+    { path: `M ${lbx - 130} ${lby + 100} L ${lbx - 130} ${lby + 145}`, trackWidth: 13, type: 'yard' as const },
   ];
   const stations = [
     { x: ox, y: oy - innerRY - 10, label: 'CENTRAL JUNCTION' },
@@ -106,10 +106,10 @@ function makeFigure8(ox: number, oy: number) {
     { path: `M ${ox - rX} ${oy + gap/2} A ${rX} ${rY} 0 0 0 ${ox + rX} ${oy + gap/2} A ${rX} ${rY} 0 0 0 ${ox - rX} ${oy + gap/2}`, trackWidth: 24, type: 'main' as const },
     { path: `M ${ox - rX + gap/2} ${oy - gap/2} Q ${ox - rX/2 + gap/4} ${oy + gap/2} ${ox - rX + gap/2} ${oy + gap/2}`, trackWidth: 18, type: 'branch' as const },
     { path: `M ${ox + rX - gap/2} ${oy - gap/2} Q ${ox + rX/2 - gap/4} ${oy + gap/2} ${ox + rX - gap/2} ${oy + gap/2}`, trackWidth: 18, type: 'branch' as const },
-    { path: `M ${rightX + gap/2} ${oy - gap/2} L ${rightX + 80} ${oy - gap/2 - 60} A 80 65 0 0 1 ${rightX + 160} ${oy - gap/2 - 130} L ${rightX + 160} ${oy - gap/2 - 210}`, trackWidth: 17, type: 'branch' as const },
-    { path: `M ${leftX - gap/2} ${oy + gap/2} L ${leftX - 80} ${oy + gap/2 + 60} A 80 65 0 0 0 ${leftX - 160} ${oy + gap/2 + 130} L ${leftX - 160} ${oy + gap/2 + 210}`, trackWidth: 17, type: 'branch' as const },
-    { path: `M ${rightX + 100} ${oy - gap/2 - 90} L ${rightX + 160} ${oy - gap/2 - 90}`, trackWidth: 13, type: 'siding' as const },
-    { path: `M ${leftX - 100} ${oy + gap/2 + 90} L ${leftX - 160} ${oy + gap/2 + 90}`, trackWidth: 13, type: 'siding' as const },
+    { path: `M ${rightX + gap/2} ${oy - gap/2} L ${rightX + 60} ${oy - gap/2 - 40} A 80 65 0 0 1 ${rightX + 110} ${oy - gap/2 - 90} L ${rightX + 110} ${oy - gap/2 - 130}`, trackWidth: 17, type: 'branch' as const },
+    { path: `M ${leftX - gap/2} ${oy + gap/2} L ${leftX - 60} ${oy + gap/2 + 40} A 80 65 0 0 0 ${leftX - 110} ${oy + gap/2 + 90} L ${leftX - 110} ${oy + gap/2 + 130}`, trackWidth: 17, type: 'branch' as const },
+    { path: `M ${rightX + 80} ${oy - gap/2 - 60} L ${rightX + 130} ${oy - gap/2 - 60}`, trackWidth: 13, type: 'siding' as const },
+    { path: `M ${leftX - 80} ${oy + gap/2 + 60} L ${leftX - 130} ${oy + gap/2 + 60}`, trackWidth: 13, type: 'siding' as const },
     { path: `M ${ox} ${oy - gap/2} L ${ox} ${oy - gap/2 - 30}`, trackWidth: 14, type: 'main' as const },
   ];
   const stations = [
@@ -130,18 +130,18 @@ function makeDepot(ox: number, oy: number) {
   const parts = [
     { path: `M ${ox - outerRX} ${oy} A ${outerRX} ${outerRY} 0 0 1 ${ox + outerRX} ${oy} A ${outerRX} ${outerRY} 0 0 1 ${ox - outerRX} ${oy}`, trackWidth: 26, type: 'main' as const },
     { path: `M ${ox - outerRX + 45} ${oy} A ${outerRX - 45} ${outerRY - 35} 0 0 1 ${ox + outerRX - 45} ${oy} A ${outerRX - 45} ${outerRY - 35} 0 0 1 ${ox - outerRX + 45} ${oy}`, trackWidth: 18, type: 'main' as const },
-    { path: `M ${brX} ${brY} L ${brX} ${brY - 80} A 70 60 0 0 1 ${brX + 80} ${brY - 150} L ${brX + 80} ${brY - 250}`, trackWidth: 20, type: 'branch' as const },
-    { path: `M ${brX + 80} ${brY - 160} L ${brX + 170} ${brY - 180} L ${brX + 170} ${brY - 240}`, trackWidth: 16, type: 'yard' as const },
-    { path: `M ${brX + 80} ${brY - 130} L ${brX + 170} ${brY - 110} L ${brX + 170} ${brY - 55}`, trackWidth: 16, type: 'yard' as const },
-    { path: `M ${brX + 80} ${brY - 195} L ${brX + 170} ${brY - 210}`, trackWidth: 14, type: 'siding' as const },
-    { path: `M ${ox - outerRX} ${oy} L ${ox - outerRX - 80} ${oy + 60} A 80 70 0 0 0 ${ox - outerRX - 150} ${oy + 120} L ${ox - outerRX - 150} ${oy + 200}`, trackWidth: 15, type: 'branch' as const },
-    { path: `M ${ox - 50} ${oy + outerRY + 55} L ${ox - 140} ${oy + outerRY + 55}`, trackWidth: 13, type: 'yard' as const },
-    { path: `M ${ox + 30} ${oy + outerRY + 105} L ${ox + 30} ${oy + outerRY + 160}`, trackWidth: 13, type: 'siding' as const },
+    { path: `M ${brX} ${brY} L ${brX + 60} ${brY - 60} A 70 60 0 0 1 ${brX + 130} ${brY - 110}`, trackWidth: 20, type: 'branch' as const },
+    { path: `M ${brX + 70} ${brY - 60} L ${brX + 160} ${brY - 60}`, trackWidth: 16, type: 'yard' as const },
+    { path: `M ${brX + 130} ${brY - 30} L ${brX + 200} ${brY - 30}`, trackWidth: 16, type: 'yard' as const },
+    { path: `M ${brX + 165} ${brY - 60} L ${brX + 165} ${brY - 10}`, trackWidth: 14, type: 'siding' as const },
+    { path: `M ${ox - outerRX} ${oy} L ${ox - outerRX - 70} ${oy + 50} A 70 60 0 0 0 ${ox - outerRX - 130} ${oy + 90} L ${ox - outerRX - 130} ${oy + 140}`, trackWidth: 15, type: 'branch' as const },
+    { path: `M ${ox - 40} ${oy + outerRY + 50} L ${ox - 130} ${oy + outerRY + 50}`, trackWidth: 13, type: 'yard' as const },
+    { path: `M ${ox + 30} ${oy + outerRY + 90} L ${ox + 30} ${oy + outerRY + 140}`, trackWidth: 13, type: 'siding' as const },
   ];
   const stations = [
     { x: ox, y: oy - outerRY - 10, label: 'MAIN DEADLINE' },
-    { x: brX + 125, y: brY - 155, label: 'ENGINE SHED' },
-    { x: ox - 95, y: oy + outerRY + 75, label: 'FREIGHT YARD' },
+    { x: brX + 90, y: brY - 70, label: 'ENGINE SHED' },
+    { x: ox - 80, y: oy + outerRY + 65, label: 'FREIGHT YARD' },
   ];
   return { parts, stations, name: "Depot Complex", desc: "Massive depot with full-length engine shed roads", viewBox: "0 0 800 400" };
 }
@@ -156,10 +156,10 @@ function makeTriple(ox: number, oy: number) {
     { path: `M ${ox - outerRX} ${oy} A ${outerRX} ${outerRY} 0 0 1 ${ox + outerRX} ${oy} A ${outerRX} ${outerRY} 0 0 1 ${ox - outerRX} ${oy}`, trackWidth: 26, type: 'main' as const },
     { path: `M ${ox - outerRX + gap} ${oy} A ${outerRX - gap} ${outerRY - gap} 0 0 1 ${ox + outerRX - gap} ${oy} A ${outerRX - gap} ${outerRY - gap} 0 0 1 ${ox - outerRX + gap} ${oy}`, trackWidth: 20, type: 'main' as const },
     { path: `M ${ox - outerRX + gap*2} ${oy} A ${outerRX - gap*2} ${outerRY - gap*2} 0 0 1 ${ox + outerRX - gap*2} ${oy} A ${outerRX - gap*2} ${outerRY - gap*2} 0 0 1 ${ox - outerRX + gap*2} ${oy}`, trackWidth: 15, type: 'branch' as const },
-    { path: `M ${ox + outerRX - 30} ${oy - outerRY + 20} L ${ox + outerRX + 50} ${oy - outerRY - 40} A 70 60 0 0 1 ${ox + outerRX + 120} ${oy - outerRY - 100} L ${ox + outerRX + 120} ${oy - outerRY - 180}`, trackWidth: 18, type: 'branch' as const },
-    { path: `M ${ox - outerRX + 30} ${oy + outerRY - 20} L ${ox - outerRX - 50} ${oy + outerRY + 40} A 70 60 0 0 0 ${ox - outerRX - 120} ${oy + outerRY + 100} L ${ox - outerRX - 120} ${oy + outerRY + 180}`, trackWidth: 18, type: 'branch' as const },
-    { path: `M ${ox + outerRX + 70} ${oy - outerRY - 80} L ${ox + outerRX + 140} ${oy - outerRY - 80}`, trackWidth: 13, type: 'siding' as const },
-    { path: `M ${ox - outerRX - 70} ${oy + outerRY + 80} L ${ox - outerRX - 140} ${oy + outerRY + 80}`, trackWidth: 13, type: 'siding' as const },
+    { path: `M ${ox + outerRX - 30} ${oy - outerRY + 20} L ${ox + outerRX + 50} ${oy - outerRY - 30} A 70 60 0 0 1 ${ox + outerRX + 120} ${oy - outerRY - 80} L ${ox + outerRX + 120} ${oy - outerRY - 110}`, trackWidth: 18, type: 'branch' as const },
+    { path: `M ${ox - outerRX + 30} ${oy + outerRY - 20} L ${ox - outerRX - 50} ${oy + outerRY + 40} A 70 60 0 0 0 ${ox - outerRX - 120} ${oy + outerRY + 100} L ${ox - outerRX - 120} ${oy + outerRY + 130}`, trackWidth: 18, type: 'branch' as const },
+    { path: `M ${ox + outerRX + 70} ${oy - outerRY - 50} L ${ox + outerRX + 130} ${oy - outerRY - 50}`, trackWidth: 13, type: 'siding' as const },
+    { path: `M ${ox - outerRX - 70} ${oy + outerRY + 60} L ${ox - outerRX - 130} ${oy + outerRY + 60}`, trackWidth: 13, type: 'siding' as const },
   ];
   const stations = [
     { x: ox, y: oy - outerRY - 10, label: 'TRIPLE MAIN' },
@@ -179,12 +179,12 @@ function makeDogBone(ox: number, oy: number) {
   const parts = [
     { path: `M ${leftEndX} ${oy} A ${endR} ${endR * 0.72} 0 0 1 ${ox + straight/2} ${oy} A ${endR} ${endR * 0.72} 0 0 1 ${leftEndX} ${oy}`, trackWidth: 26, type: 'main' as const },
     { path: `M ${leftEndX + 40} ${oy} A ${endR - 40} ${endR * 0.72 - 25} 0 0 1 ${ox + straight/2 - 40} ${oy} A ${endR - 40} ${endR * 0.72 - 25} 0 0 1 ${leftEndX + 40} ${oy}`, trackWidth: 18, type: 'main' as const },
-    { path: `M ${rightEndX} ${oy} L ${rightEndX + 80} ${oy - 50} A 90 75 0 0 1 ${rightEndX + 170} ${oy - 130} L ${rightEndX + 170} ${oy - 210}`, trackWidth: 18, type: 'branch' as const },
-    { path: `M ${leftEndX} ${oy} L ${leftEndX - 80} ${oy + 50} A 90 75 0 0 0 ${leftEndX - 170} ${oy + 130} L ${leftEndX - 170} ${oy + 210}`, trackWidth: 18, type: 'branch' as const },
-    { path: `M ${rightEndX + 100} ${oy - 90} L ${rightEndX + 180} ${oy - 90}`, trackWidth: 14, type: 'siding' as const },
-    { path: `M ${rightEndX + 140} ${oy - 130} L ${rightEndX + 140} ${oy - 190}`, trackWidth: 13, type: 'yard' as const },
-    { path: `M ${leftEndX - 100} ${oy + 90} L ${leftEndX - 180} ${oy + 90}`, trackWidth: 14, type: 'siding' as const },
-    { path: `M ${leftEndX - 140} ${oy + 130} L ${leftEndX - 140} ${oy + 190}`, trackWidth: 13, type: 'yard' as const },
+    { path: `M ${rightEndX} ${oy} L ${rightEndX + 70} ${oy - 40} A 90 75 0 0 1 ${rightEndX + 130} ${oy - 90} L ${rightEndX + 130} ${oy - 150}`, trackWidth: 18, type: 'branch' as const },
+    { path: `M ${leftEndX} ${oy} L ${leftEndX - 70} ${oy + 40} A 90 75 0 0 0 ${leftEndX - 130} ${oy + 90} L ${leftEndX - 130} ${oy + 150}`, trackWidth: 18, type: 'branch' as const },
+    { path: `M ${rightEndX + 80} ${oy - 70} L ${rightEndX + 150} ${oy - 70}`, trackWidth: 14, type: 'siding' as const },
+    { path: `M ${rightEndX + 110} ${oy - 100} L ${rightEndX + 110} ${oy - 150}`, trackWidth: 13, type: 'yard' as const },
+    { path: `M ${leftEndX - 80} ${oy + 70} L ${leftEndX - 150} ${oy + 70}`, trackWidth: 14, type: 'siding' as const },
+    { path: `M ${leftEndX - 110} ${oy + 100} L ${leftEndX - 110} ${oy + 150}`, trackWidth: 13, type: 'yard' as const },
     { path: `M ${ox} ${oy - endR * 0.72 + 10} L ${ox + 60} ${oy - endR * 0.72 - 40} A 50 40 0 0 1 ${ox + 110} ${oy - endR * 0.72 - 80}`, trackWidth: 14, type: 'main' as const },
   ];
   const stations = [
@@ -205,18 +205,18 @@ function makeHeritage(ox: number, oy: number) {
   const parts = [
     { path: `M ${ox - outerRX} ${oy} A ${outerRX} ${outerRY} 0 0 1 ${ox + outerRX} ${oy} A ${outerRX} ${outerRY} 0 0 1 ${ox - outerRX} ${oy}`, trackWidth: 26, type: 'main' as const },
     { path: `M ${ox - outerRX + 45} ${oy} A ${outerRX - 45} ${outerRY - 40} 0 0 1 ${ox + outerRX - 45} ${oy} A ${outerRX - 45} ${outerRY - 40} 0 0 1 ${ox - outerRX + 45} ${oy}`, trackWidth: 18, type: 'main' as const },
-    { path: `M ${brX} ${brY} L ${brX + 70} ${brY - 50} A 90 75 0 0 1 ${brX + 160} ${brY - 130} L ${brX + 160} ${brY - 220}`, trackWidth: 18, type: 'branch' as const },
-    { path: `M ${ox - outerRX + 40} ${oy + outerRY - 30} L ${ox - outerRX - 40} ${oy + outerRY + 50} A 80 65 0 0 0 ${ox - outerRX - 120} ${oy + outerRY + 115} L ${ox - outerRX - 120} ${oy + outerRY + 195}`, trackWidth: 16, type: 'branch' as const },
+    { path: `M ${brX} ${brY} L ${brX + 70} ${brY - 50} A 90 75 0 0 1 ${brX + 150} ${brY - 90} L ${brX + 150} ${brY - 50}`, trackWidth: 18, type: 'branch' as const },
+    { path: `M ${ox - outerRX + 40} ${oy + outerRY - 30} L ${ox - outerRX - 40} ${oy + outerRY + 50} A 80 65 0 0 0 ${ox - outerRX - 120} ${oy + outerRY + 115} L ${ox - outerRX - 120} ${oy + outerRY + 160}`, trackWidth: 16, type: 'branch' as const },
     { path: `M ${ox - 80} ${oy - outerRY + 10} L ${ox + 80} ${oy - outerRY + 10}`, trackWidth: 16, type: 'main' as const },
-    { path: `M ${brX + 60} ${brY - 60} L ${brX + 120} ${brY - 60}`, trackWidth: 14, type: 'branch' as const },
-    { path: `M ${brX + 160} ${brY - 120} L ${brX + 220} ${brY - 120} L ${brX + 220} ${brY - 80}`, trackWidth: 14, type: 'siding' as const },
-    { path: `M ${ox - outerRX - 80} ${oy + outerRY + 80} L ${ox - outerRX - 150} ${oy + outerRY + 80}`, trackWidth: 13, type: 'siding' as const },
-    { path: `M ${ox - outerRX - 120} ${oy + outerRY + 120} L ${ox - outerRX - 120} ${oy + outerRY + 175}`, trackWidth: 13, type: 'yard' as const },
+    { path: `M ${brX + 60} ${brY - 50} L ${brX + 130} ${brY - 50}`, trackWidth: 14, type: 'branch' as const },
+    { path: `M ${brX + 150} ${brY - 70} L ${brX + 200} ${brY - 70} L ${brX + 200} ${brY - 30}`, trackWidth: 14, type: 'siding' as const },
+    { path: `M ${ox - outerRX - 70} ${oy + outerRY + 70} L ${ox - outerRX - 130} ${oy + outerRY + 70}`, trackWidth: 13, type: 'siding' as const },
+    { path: `M ${ox - outerRX - 100} ${oy + outerRY + 100} L ${ox - outerRX - 100} ${oy + outerRY + 150}`, trackWidth: 13, type: 'yard' as const },
   ];
   const stations = [
     { x: ox, y: oy - outerRY - 10, label: 'HERITAGE MAIN' },
-    { x: brX + 80, y: brY - 115, label: 'BRANCH HALT' },
-    { x: ox - outerRX - 95, y: oy + outerRY + 105, label: 'VALLEY BRANCH' },
+    { x: brX + 90, y: brY - 70, label: 'BRANCH HALT' },
+    { x: ox - outerRX - 80, y: oy + outerRY + 85, label: 'VALLEY BRANCH' },
   ];
   return { parts, stations, name: "Heritage Network", desc: "Large heritage layout with dual branch extensions", viewBox: "0 0 800 400" };
 }
@@ -235,8 +235,8 @@ function genLayout(seed: number) {
   };
   
   const idx = Math.floor(rng(0) * FACTORIES.length);
-  const jx = (rng(1) - 0.5) * 50;
-  const jy = (rng(2) - 0.5) * 30;
+  const jx = (rng(1) - 0.5) * 20;
+  const jy = (rng(2) - 0.5) * 10;
   
   const layout = FACTORIES[idx](400 + jx, 200 + jy);
   
