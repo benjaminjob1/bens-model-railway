@@ -880,14 +880,14 @@ export default function InteractiveTrain({ showControls = true }: InteractiveTra
                   onClick={toggleSignal}
                   onMouseDown={(e) => e.stopPropagation()}
                 >
-                  <line x1={sig.x} y1={sig.y} x2={sig.x} y2={sig.y + 18} stroke={active ? '#22c55e' : '#ef4444'} strokeWidth="1.5" opacity="0.6" pointerEvents="none"/>
+                  <line x1={sig.x} y1={sig.y} x2={sig.x} y2={sig.y + 18} stroke={active ? '#4ade80' : '#f87171'} strokeWidth="2" opacity="0.9" pointerEvents="none"/>
                   <circle cx={sig.x} cy={sig.y} r="24" fill="rgba(255,255,255,0.05)" style={{ cursor: 'pointer' }} pointerEvents="all"
                     onClick={(e) => { e.stopPropagation(); toggleSignal(e); }}
                     onMouseDown={(e) => e.stopPropagation()}
                   />
-                  <circle cx={sig.x} cy={sig.y} r="6" fill={active ? '#22c55e' : '#ef4444'} opacity={active ? 1 : 0.8}
-                    style={{ filter: active ? 'drop-shadow(0 0 5px #22c55e)' : 'drop-shadow(0 0 4px #ef4444)' }} pointerEvents="none" />
-                  {active && <circle cx={sig.x} cy={sig.y} r="10" fill="none" stroke="#22c55e" strokeWidth="1.5" opacity="0.5" pointerEvents="none" />}
+                  <circle cx={sig.x} cy={sig.y} r="7" fill={active ? '#4ade80' : '#f87171'} opacity={active ? 1 : 0.9}
+                    style={{ filter: active ? 'drop-shadow(0 0 6px #4ade80)' : 'drop-shadow(0 0 5px #f87171)' }} pointerEvents="none" />
+                  {active && <circle cx={sig.x} cy={sig.y} r="12" fill="none" stroke="#4ade80" strokeWidth="2" opacity="0.6" pointerEvents="none" />}
                 </g>
               );
             })}
