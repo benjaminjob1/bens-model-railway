@@ -437,15 +437,8 @@ export default function InteractiveTrain({ showControls = true }: InteractiveTra
       
       let angle = Math.atan2(dy, dx) * (180 / Math.PI);
       if (isRev) angle += 180;
-      // Front is on RIGHT. We need it to always face the direction of motion.
-      // Direction of motion: atan2 gives the angle the front should point.
-      // So rotation = angle. flipX inverts the SVG horizontally.
-      // Moving RIGHT: angle≈0°, raw angle would point front right (correct!). flipX=-1 mirrors it to point left (WRONG!). → flipX=1.
-      // Moving LEFT: angle≈180°, raw angle would point front left (correct!). flipX=1 doesn't flip (CORRECT!). → flipX=1.
-      // But this means no flip is needed?! The upside-down must be from angle wrap-around.
-      // Let's just test: angle+180, flipX=1 always.
-      const rotation = angle + 180;
-      const flipX = 1;
+      const rotation = angle;
+      const flipX = dx > 0 ? -1 : 1;
       
       const pixelX = point.x * (svgRect.width / 800);
       const pixelY = point.y * (svgRect.height / 400);
