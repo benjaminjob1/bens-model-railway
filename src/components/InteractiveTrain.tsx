@@ -443,6 +443,7 @@ export default function InteractiveTrain({ showControls = true }: InteractiveTra
       // Top (|26|≤90): negate → -26° → cowcatcher points RIGHT ✓
       // Right (|-90|≤90): negate → 90° → cowcatcher points DOWN ✓
       const effectiveAngle = Math.abs(angle) > 90 ? angle : -angle;
+      const flipX = Math.abs(angle) > 90 ? -1 : 1;
       const scaleX = svgRect.width / 800;
       const scaleY = svgRect.height / 400;
       const pixelX = point.x * scaleX;
@@ -450,7 +451,7 @@ export default function InteractiveTrain({ showControls = true }: InteractiveTra
       
       setTrainPos({ x: pixelX, y: pixelY });
       setTrainAngle(effectiveAngle);
-      setTrainScaleX(1);
+      setTrainScaleX(flipX);
       
       const now = Date.now();
       if (now - lastTrailTime.current > 80) {
