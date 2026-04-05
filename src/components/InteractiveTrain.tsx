@@ -890,10 +890,10 @@ export default function InteractiveTrain({ showControls = true }: InteractiveTra
               );
             })}
 
-            {/* Hidden main path for train interaction */}
-            <path ref={mainPathRef} d={mainTrackPath} fill="none" stroke="transparent" strokeWidth="50"/>
+            {/* Hidden main path for train interaction — pointerEvents="none" so clicks pass through to signals beneath */}
+            <path ref={mainPathRef} d={mainTrackPath} fill="none" stroke="transparent" strokeWidth="50" pointerEvents="none"/>
             {branchTrackPath && (
-              <path ref={branchPathRef} d={branchTrackPath} fill="none" stroke="transparent" strokeWidth="40"/>
+              <path ref={branchPathRef} d={branchTrackPath} fill="none" stroke="transparent" strokeWidth="40" pointerEvents="none"/>
             )}
           </svg>
           
