@@ -449,7 +449,12 @@ export default function InteractiveTrain({ showControls = true }: InteractiveTra
       const isLeft = point.x < 300; // Left side of oval
       const flipX = (isBottom || isLeft) ? -1 : 1;
       
-      setTrainPos({ x: point.x * (svgRect.width / 800), y: point.y * (svgRect.height / 400) });
+      const scaleX = svgRect.width / 800;
+      const scaleY = svgRect.height / 400;
+      const pixelX = point.x * scaleX;
+      const pixelY = point.y * scaleY;
+      
+      setTrainPos({ x: pixelX, y: pixelY });
       setTrainAngle(angle);
       setTrainScaleX(flipX);
       
