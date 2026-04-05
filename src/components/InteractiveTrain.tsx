@@ -437,7 +437,9 @@ export default function InteractiveTrain({ showControls = true }: InteractiveTra
       
       let angle = Math.atan2(dy, dx) * (180 / Math.PI);
       if (isRev) angle += 180;
-      const rotation = angle;
+      // dx < 0 = moving RIGHT. Raw angle works, no flip.
+      // dx > 0 = moving LEFT. Need +180 AND flipX=-1 to correct both direction and orientation.
+      const rotation = dx > 0 ? angle + 180 : angle;
       const flipX = dx > 0 ? -1 : 1;
       
       const pixelX = point.x * (svgRect.width / 800);
