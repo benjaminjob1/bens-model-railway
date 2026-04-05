@@ -437,18 +437,20 @@ export default function InteractiveTrain({ showControls = true }: InteractiveTra
       // Angle from atan2 gives direction from current point to next point.
       let angle = Math.atan2(dy, dx) * (180 / Math.PI);
       if (isRev) angle += 180;
-      // SVG faces right. Pure rotation works for top/right/left.
-      // Bottom (y>200, moving left): appears upside-down, needs flipX=-1 to correct.
-      const isBottom = point.y > 200;
-      const flipX = isBottom ? -1 : 1;
+      // SVG faces right. Counterclockwise oval: top(26°)→right(90°)→bottom(154°)→left(270°).
+      // Bottom (|154|>90): keep angle=154 → facing left+backward ← train SHOULD face backward at bottom ✓
+      // Left (|270|>90): keep angle=270 → cowcatcher points UP ✓
+      // Top (|26|≤90): negate → -26° → cowcatcher points RIGHT ✓
+      // Right (|-90|≤90): negate → 90° → cowcatcher points DOWN ✓
+      const effectiveAngle = Math.abs(angle) > 90 ? angle : -angle;
       const scaleX = svgRect.width / 800;
       const scaleY = svgRect.height / 400;
       const pixelX = point.x * scaleX;
       const pixelY = point.y * scaleY;
       
       setTrainPos({ x: pixelX, y: pixelY });
-      setTrainAngle(angle);
-      setTrainScaleX(flipX);
+      setTrainAngle(effectiveAngle);
+      setTrainScaleX(1);
       
       const now = Date.now();
       if (now - lastTrailTime.current > 80) {
