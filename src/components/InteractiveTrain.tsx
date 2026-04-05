@@ -294,12 +294,13 @@ function genLayout(seed: number) {
 // ORIGINAL LAYOUT (from 2D track plan)
 // ──────────────────────────────────────────────
 const ORIGINAL_LAYOUT = {
-  // Main oval: counterclockwise around the border, leaving the center open for the figure-8
-  mainPath: "M 150 200 A 250 160 0 0 1 650 200 A 250 160 0 0 1 150 200",
-  // Figure-8 top loop: leaves oval left (150,200), arcs up above oval (peak y=0), returns to oval right (650,200)
-  branchPath: "M 150 200 A 125 80 0 0 1 400 0 A 125 80 0 0 1 650 200",
-  // Figure-8 bottom loop: leaves oval right (650,200), arcs below oval (peak y=400), returns to oval left (150,200)
-  upMainPath: "M 650 200 A 125 80 0 0 0 400 400 A 125 80 0 0 0 150 200",
+  // Main oval: narrower and shorter so the crossing tracks show outside it
+  // Oval: left(200,200)→top(400,100)→right(600,200)→bottom(400,300)→left, rx=200,ry=100
+  mainPath: "M 200 200 A 200 100 0 0 1 600 200 A 200 100 0 0 1 200 200",
+  // Top crossing loop: wider/taller than oval so it protrudes visibly (peak y=20, below oval top y=100)
+  branchPath: "M 200 200 A 180 90 0 0 1 400 20 A 180 90 0 0 1 600 200",
+  // Bottom crossing loop: also protrudes below oval (nadir y=380, above oval bottom y=300)
+  upMainPath: "M 600 200 A 180 90 0 0 0 400 380 A 180 90 0 0 0 200 200",
 };
 
 // ──────────────────────────────────────────────
