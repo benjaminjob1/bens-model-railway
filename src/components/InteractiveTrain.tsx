@@ -422,12 +422,14 @@ export default function InteractiveTrain({ showControls = true }: InteractiveTra
     return Math.random() > 0.1 ? Math.floor(Math.random() * 3) + 2 : 1;
   }, [trackMode, randomTick]);
 
-  // Progress per train — stable ref, only re-inits when train count changes
+  // Progress per train — useRef so it persists across renders without re-init
   const progress = useRef<number[]>([]);
-  if (progress.current.length !== numTrains) {
+  const progressInitialized = useRef<number>(0);
+  if (progressInitialized.current !== numTrains) {
     progress.current = Array.from({ length: numTrains }).map((_, i) =>
       trackMode === 'default' ? (i === 0 ? 0.1 : 0.6) : Math.random()
     );
+    progressInitialized.current = numTrains;
   }
   const animFrame = useRef<number>(0);
   const trailId = useRef(0);
@@ -436,7 +438,7 @@ export default function InteractiveTrain({ showControls = true }: InteractiveTra
   const branchLength = useRef(0);
   const totalLength = useRef(0);
   
-  const randomLayout = useMemo(() => genLayout(Date.now()), []);
+  const randomLayout = useMemo(() => genLayout(Date.now() + randomTick), [randomTick]);
   
   const trackParts = trackMode === 'default'
     ? [
@@ -614,7 +616,7 @@ export default function InteractiveTrain({ showControls = true }: InteractiveTra
       const clientX = "touches" in e ? e.touches[0].clientX : e.clientX;
       const clientY = "touches" in e ? e.touches[0].clientY : e.clientY;
       const dist = Math.hypot(clientX - (rect.left + rect.width / 2), clientY - (rect.top + rect.height / 2));
-      if (dist < 70) {
+      if (dist < 120) {
         setIsDragging(true);
         const a = new Audio("/sounds/train-move.mp3");
         a.volume = 0.2; a.play().catch(() => {});
@@ -895,6 +897,7 @@ export default function InteractiveTrain({ showControls = true }: InteractiveTra
             const active = activeSignals.has(sig.id);
             return (
               <div key={`sig-btn-${sig.id}`}
+                onTouchStart={(e) => { e.stopPropagation(); e.preventDefault(); }}
                 onClick={() => {
                   if (!isMuted) {
                     const s = new Audio("/sounds/train-move.mp3");
