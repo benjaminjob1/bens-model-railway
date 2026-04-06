@@ -318,24 +318,23 @@ export default function InteractiveTrain({ showControls = true }: InteractiveTra
   const initialized = useRef(false);
   
   const [trackMode, setTrackMode] = useState<'default' | 'random'>('default');
-  // Incremented each time user clicks Random → forces fresh Math.random() for signals, layout, trains
-  const [randomSeed, setRandomSeed] = useState(0);
-  // Resets train progress when entering random mode so it starts from a new position
-  const [trainResetKey, setTrainResetKey] = useState(0);
-  const [trainPos, setTrainPos] = useState({ x: 0, y: 0 });
+  // Changes each time Random is clicked → re-randomizes signals, layout, train start positions
+  const [randomTick, setRandomTick] = useState(0);
+  const [trainPos, setTrainPos] = useState<{x:number,y:number}[]>([{ x: 0, y: 0 }]);
   const [visible, setVisible] = useState(false);
   const [trail, setTrail] = useState<Array<{ x: number; y: number; id: number }>>([]);
   const [isDragging, setIsDragging] = useState(false);
-  const [trainAngle, setTrainAngle] = useState(0);
-  const [trainScaleX, setTrainScaleX] = useState(1);
-  const [trainScaleY, setTrainScaleY] = useState(1);
+  const [trainAngle, setTrainAngle] = useState<number[]>([0]);
+  const [trainScaleX, setTrainScaleX] = useState<number[]>([1]);
+  const [trainScaleY, setTrainScaleY] = useState<number[]>([1]);
   // Auto-whistle refs: interval starts at 30s, increases each trigger up to 30min
   const autoIntervalRef = useRef(10000); // ms — starts at 10s after first interaction
   const autoTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   // Keep refs in sync with state so interval can read current values
-  const trainAngleRef = useRef(trainAngle);
-  const trainPosRef = useRef(trainPos);
+  const trainAngleRef = useRef<number[]>([0]);
+  const trainPosRef = useRef<{x:number,y:number}[]>([{ x: 0, y: 0 }]);
   useEffect(() => { trainAngleRef.current = trainAngle; }, [trainAngle]);
+  useEffect(() => { trainPosRef.current = trainPos; }, [trainPos]);
   useEffect(() => { trainPosRef.current = trainPos; }, [trainPos]);
   const [smokeParticles, setSmokeParticles] = useState<Array<{ id: number; x: number; y: number; age: number }>>([]);
   const [activeSignals, setActiveSignals] = useState<Set<string>>(new Set());
@@ -361,9 +360,9 @@ export default function InteractiveTrain({ showControls = true }: InteractiveTra
       ambientRef.current = a;
       // Trigger first smoke + whistle immediately on first click
       if (!isMutedRef.current) {
-        const rad = (trainAngleRef.current * Math.PI) / 180;
-        const px = trainPosRef.current.x + Math.cos(rad) * 22;
-        const py = trainPosRef.current.y + Math.sin(rad) * 22 - 20;
+        const rad = (trainAngleRef.current[0] * Math.PI) / 180;
+        const px = trainPosRef.current[0].x + Math.cos(rad) * 22;
+        const py = trainPosRef.current[0].y + Math.sin(rad) * 22 - 20;
         const newParts: Array<{ id: number; x: number; y: number; age: number }> = [];
         for (let i = 0; i < 10; i++) newParts.push({ id: ++smokeId.current, x: px, y: py, age: 0 });
         setSmokeParticles(prev => [...prev, ...newParts]);
@@ -380,7 +379,7 @@ export default function InteractiveTrain({ showControls = true }: InteractiveTra
     };
   });
 
-  // Signal positions: fixed in default mode, random each time Random is clicked
+  // Signal positions: fixed in default, random each time Random is clicked
   const signalPositions = useMemo(() => {
     if (trackMode === 'default') {
       return [
@@ -391,16 +390,15 @@ export default function InteractiveTrain({ showControls = true }: InteractiveTra
         { id: 'sig-5', x: 150, y: 200 },
       ];
     }
-    // Generate fresh random positions every time
-    const seed = Date.now() + randomSeed;
+    const seed = Date.now() + randomTick;
     const rng = (n: number) => { const x = Math.sin(seed * 12.9898 + n * 78.233) * 43758.5453; return x - Math.floor(x); };
-    const count = Math.floor(rng(99) * 3) + 3; // 3–5 signals
+    const count = Math.floor(rng(77) * 3) + 3; // 3–5 signals
     return Array.from({ length: count }).map((_, i) => ({
       id: `sig-rnd-${i}-${seed}`,
       x: 80 + rng(i * 3 + 1) * 640,
       y: 70 + rng(i * 3 + 2) * 260,
     }));
-  }, [trackMode, randomSeed]);
+  }, [trackMode, randomTick]);
   const [svgRect, setSvgRect] = useState({
     left: typeof window !== 'undefined' ? window.innerWidth / 2 - 400 : 0,
     top: typeof window !== 'undefined' ? window.innerHeight / 2 - 200 : 0,
@@ -418,12 +416,19 @@ export default function InteractiveTrain({ showControls = true }: InteractiveTra
     return () => clearInterval(interval);
   }, [smokeParticles.length]);
   
-  const progress = useRef(0.1);
+  // Number of trains: default=2, random=2-4 (very rarely 1)
+  const numTrains = trackMode === 'default'
+    ? 2
+    : Math.random() > 0.1 ? Math.floor(Math.random() * 3) + 2 : 1;
 
-  // Reset train progress when trainResetKey changes (entering random mode)
-  useEffect(() => {
-    if (trainResetKey > 0) progress.current = Math.random();
-  }, [trainResetKey]);
+  const progress = useRef<number[]>([]);
+  const trainInitialized = useRef(false);
+  if (!trainInitialized.current || progress.current.length !== numTrains) {
+    progress.current = Array.from({ length: numTrains }).map((_, i) =>
+      trackMode === 'default' ? (i === 0 ? 0.1 : 0.6) : Math.random()
+    );
+    trainInitialized.current = true;
+  }
   const animFrame = useRef<number>(0);
   const trailId = useRef(0);
   const lastTrailTime = useRef(0);
@@ -431,7 +436,7 @@ export default function InteractiveTrain({ showControls = true }: InteractiveTra
   const branchLength = useRef(0);
   const totalLength = useRef(0);
   
-  const randomLayout = useMemo(() => genLayout(Date.now() + randomSeed), [trackMode, randomSeed]);
+  const randomLayout = useMemo(() => genLayout(Date.now()), []);
   
   const trackParts = trackMode === 'default'
     ? [
@@ -457,10 +462,10 @@ export default function InteractiveTrain({ showControls = true }: InteractiveTra
 
     const doAutoWhistle = () => {
       if (isMutedRef.current) return;
-      const rad = (trainAngleRef.current * Math.PI) / 180;
+      const rad = (trainAngleRef.current[0] * Math.PI) / 180;
       const aheadDist = 22, smokeRise = 20;
-      const px = trainPosRef.current.x + Math.cos(rad) * aheadDist;
-      const py = trainPosRef.current.y + Math.sin(rad) * aheadDist - smokeRise;
+      const px = trainPosRef.current[0].x + Math.cos(rad) * aheadDist;
+      const py = trainPosRef.current[0].y + Math.sin(rad) * aheadDist - smokeRise;
       const newParts: Array<{ id: number; x: number; y: number; age: number }> = [];
       for (let i = 0; i < 10; i++) newParts.push({ id: ++smokeId.current, x: px, y: py, age: 0 });
       setSmokeParticles(prev => [...prev, ...newParts]);
@@ -481,10 +486,7 @@ export default function InteractiveTrain({ showControls = true }: InteractiveTra
   }, []);
 
   const handleModeChange = useCallback((mode: 'default' | 'random') => {
-    if (mode === 'random') {
-      setRandomSeed(s => s + 1);
-      setTrainResetKey(k => k + 1);
-    }
+    if (mode === 'random') setRandomTick(t => t + 1);
     setTrackMode(mode);
     localStorage.setItem('railway-track-mode', mode);
   }, []);
@@ -531,32 +533,25 @@ export default function InteractiveTrain({ showControls = true }: InteractiveTra
       return { point: mainPath.getPointAtLength(0), onBranch: false };
     };
 
-    const updatePosition = (p: number, isRev = false) => {
+    // Update position of a specific train by index
+    const updatePosition = (idx: number, p: number, isRev = false) => {
       const { point } = getPointAtProgress(p);
-      
       const delta = 0.003;
       const { point: nextPoint } = getPointAtProgress(Math.min(p + delta, 0.9999));
       const dx = nextPoint.x - point.x;
       const dy = nextPoint.y - point.y;
-      
       let angle = Math.atan2(dy, dx) * (180 / Math.PI);
       if (isRev) angle += 180;
-      const rotation = angle;
-      const normalized = ((rotation % 360) + 360) % 360;
-      // Rotation between 90 and 270 degrees makes the train appear upside-down.
-      // We flip it vertically (scaleY = -1) in that range to keep wheels on the track.
-      const shouldFlipY = (normalized > 90 && normalized < 270);
-      const flipY = shouldFlipY ? -1 : 1;
-      
+      const normalized = ((angle % 360) + 360) % 360;
+      const flipY = (normalized > 90 && normalized < 270) ? -1 : 1;
       const scaleX = svgRect.width / 800;
       const scaleY_factor = svgRect.height / 400;
       const pixelX = point.x * scaleX;
       const pixelY = point.y * scaleY_factor;
-      
-      setTrainPos({ x: pixelX, y: pixelY });
-      setTrainAngle(rotation);
-      setTrainScaleX(1); 
-      setTrainScaleY(flipY);
+      setTrainPos(prev => { const next = [...prev]; next[idx] = { x: pixelX, y: pixelY }; return next; });
+      setTrainAngle(prev => { const next = [...prev]; next[idx] = angle; return next; });
+      setTrainScaleX(prev => { const next = [...prev]; next[idx] = 1; return next; });
+      setTrainScaleY(prev => { const next = [...prev]; next[idx] = flipY; return next; });
       
       const now = Date.now();
       if (now - lastTrailTime.current > 80) {
@@ -569,11 +564,13 @@ export default function InteractiveTrain({ showControls = true }: InteractiveTra
 
     const animate = () => {
       if (!isDragging) {
-        const prev = progress.current;
-        progress.current = (progress.current + 0.00025) % 1;
-        // Detect wrap-around: when progress resets from ~1 back to ~0, train is NOT reversing
-        const isRev = progress.current < prev;
-        updatePosition(progress.current, isRev);
+        for (let i = 0; i < progress.current.length; i++) {
+          const speed = 0.00018 + i * 0.00007; // slightly different speeds so trains spread out
+          const prev = progress.current[i];
+          progress.current[i] = (progress.current[i] + speed) % 1;
+          const isRev = progress.current[i] < prev;
+          updatePosition(i, progress.current[i], isRev);
+        }
       }
       animFrame.current = requestAnimationFrame(animate);
     };
@@ -590,15 +587,14 @@ export default function InteractiveTrain({ showControls = true }: InteractiveTra
       const mouseX = ((clientX - rect.left) / rect.width) * 800;
       const mouseY = ((clientY - rect.top) / rect.height) * 400;
 
-      let minDist = Infinity, bestP = progress.current;
-      
+      // Check which train is nearest the touch/mouse (only drag the first one)
+      let minDist = Infinity, bestP = progress.current[0];
       for (let i = 0; i <= 300; i++) {
         const p = i / 300;
         const pt = mainPath.getPointAtLength(p * pathLength.current);
         const d = Math.hypot(mouseX - pt.x, mouseY - pt.y);
         if (d < minDist) { minDist = d; bestP = p * (pathLength.current / totalLength.current); }
       }
-      
       if (branchPath) {
         for (let i = 0; i <= 150; i++) {
           const p = i / 150;
@@ -607,9 +603,8 @@ export default function InteractiveTrain({ showControls = true }: InteractiveTra
           if (d < minDist) { minDist = d; bestP = (pathLength.current / totalLength.current) + (p * (branchLength.current / totalLength.current)); }
         }
       }
-      
-      progress.current = Math.max(0.001, Math.min(0.999, bestP));
-      updatePosition(progress.current);
+      progress.current[0] = Math.max(0.001, Math.min(0.999, bestP));
+      updatePosition(0, progress.current[0]);
       if (!visible) setVisible(true);
     };
 
@@ -621,28 +616,18 @@ export default function InteractiveTrain({ showControls = true }: InteractiveTra
       const dist = Math.hypot(clientX - (rect.left + rect.width / 2), clientY - (rect.top + rect.height / 2));
       if (dist < 70) {
         setIsDragging(true);
-        // Play move sound
         const a = new Audio("/sounds/train-move.mp3");
-        a.volume = 0.2;
-        a.play().catch(() => {});
-        // Play whistle on click (quieter)
+        a.volume = 0.2; a.play().catch(() => {});
         if (!isMuted) {
           const w = new Audio("/sounds/cta-whistle.mp3");
-          w.volume = 0.08;
-          w.play().catch(() => {});
+          w.volume = 0.08; w.play().catch(() => {});
         }
-        // Spawn smoke at chimney (front of train = ahead of center along travel direction)
-        // SVG rotated 180° internally so chimney faces right in screen space when angle=0
-        const rad = (trainAngle * Math.PI) / 180;
-        const aheadDist = 22;   // px ahead of center toward chimney
-        const smokeRise = 20;   // px above center (smoke rises up in screen space)
-        const smokeX = trainPos.x + Math.cos(rad) * aheadDist;
-        const smokeY = trainPos.y + Math.sin(rad) * aheadDist - smokeRise;
-        const newParticles: Array<{ id: number; x: number; y: number; age: number }> = [];
-        for (let i = 0; i < 10; i++) {
-          newParticles.push({ id: ++smokeId.current, x: smokeX, y: smokeY, age: 0 });
-        }
-        setSmokeParticles(prev => [...prev, ...newParticles]);
+        const rad = (trainAngleRef.current[0] * Math.PI) / 180;
+        const smokeX = trainPosRef.current[0].x + Math.cos(rad) * 22;
+        const smokeY = trainPosRef.current[0].y + Math.sin(rad) * 22 - 20;
+        const newParts: Array<{ id: number; x: number; y: number; age: number }> = [];
+        for (let i = 0; i < 10; i++) newParts.push({ id: ++smokeId.current, x: smokeX, y: smokeY, age: 0 });
+        setSmokeParticles(prev => [...prev, ...newParts]);
       }
     };
 
@@ -886,20 +871,18 @@ export default function InteractiveTrain({ showControls = true }: InteractiveTra
               </g>
             ))}
 
-            {/* Signal indicators — shown in all layouts (positions scale with viewBox) */}
+            {/* Signal indicators — shown in all layouts */}
             {signalPositions.map(sig => {
               const active = activeSignals.has(sig.id);
-              const toggleSignal = (e: React.MouseEvent) => {
+              const toggleSignal = (e: React.MouseEvent | React.TouchEvent) => {
                 e.stopPropagation();
                 if (!isMuted) {
                   const s = new Audio("/sounds/train-move.mp3");
-                  s.volume = 0.15;
-                  s.play().catch(() => {});
+                  s.volume = 0.15; s.play().catch(() => {});
                 }
                 setActiveSignals(prev => {
                   const next = new Set(prev);
-                  if (next.has(sig.id)) next.delete(sig.id);
-                  else next.add(sig.id);
+                  if (next.has(sig.id)) next.delete(sig.id); else next.add(sig.id);
                   return next;
                 });
               };
@@ -907,16 +890,20 @@ export default function InteractiveTrain({ showControls = true }: InteractiveTra
                 <g key={sig.id} style={{ cursor: 'pointer', pointerEvents: 'all' }}
                   onClick={toggleSignal}
                   onMouseDown={(e) => { e.stopPropagation(); }}
+                  onTouchStart={(e) => { e.preventDefault(); e.stopPropagation(); toggleSignal(e as any); }}
                 >
-                  <line x1={sig.x} y1={sig.y} x2={sig.x} y2={sig.y + 18} stroke={active ? '#22c55e' : '#ef4444'} strokeWidth="1.5" opacity="0.6" pointerEvents="none"/>
-                  {/* Large invisible tap target (r=45 ≈ 43px diameter on phone) */}
+                  {/* Big invisible tap target (r=45 ≈ 43px on phone) */}
                   <circle cx={sig.x} cy={sig.y} r="45" fill="transparent" style={{ cursor: 'pointer' }}
                     onClick={toggleSignal}
                     onMouseDown={(e) => { e.stopPropagation(); }}
+                    onTouchStart={(e) => { e.preventDefault(); e.stopPropagation(); toggleSignal(e as any); }}
                   />
-                  {/* Visible signal light */}
+                  {/* Signal pole */}
+                  <line x1={sig.x} y1={sig.y} x2={sig.x} y2={sig.y + 18} stroke={active ? '#22c55e' : '#ef4444'} strokeWidth="1.5" opacity="0.6" pointerEvents="none"/>
+                  {/* Signal light */}
                   <circle cx={sig.x} cy={sig.y} r="9" fill={active ? '#22c55e' : '#ef4444'} opacity={active ? 1 : 0.85}
                     style={{ filter: active ? 'drop-shadow(0 0 7px #22c55e)' : 'drop-shadow(0 0 5px #ef4444)' }} pointerEvents="none" />
+                  {/* Active glow ring */}
                   {active && <circle cx={sig.x} cy={sig.y} r="14" fill="none" stroke="#22c55e" strokeWidth="2" opacity="0.4" pointerEvents="none" />}
                 </g>
               );
@@ -950,15 +937,17 @@ export default function InteractiveTrain({ showControls = true }: InteractiveTra
             />
           ))}
 
-          {/* Train cursor */}
+          {/* Train cursors — one per train, only first is draggable */}
+          {trainPos.map((pos, i) => (
           <div
-            ref={trainRef}
+            key={i}
+            ref={i === 0 ? trainRef : undefined}
             className="train-cursor"
             style={{
-              left: trainPos.x,
-              top: trainPos.y,
-              opacity: visible ? 0.6 : 0,
-              transform: `translate(-50%, -50%) rotate(${trainAngle}deg) scale(${trainScaleX}, ${trainScaleY})`,
+              left: pos.x,
+              top: pos.y,
+              opacity: visible ? (i === 0 ? 0.7 : 0.55) : 0,
+              transform: `translate(-50%, -50%) rotate(${trainAngle[i] || 0}deg) scale(${trainScaleX[i] || 1}, ${trainScaleY[i] || 1})`,
             }}
           >
             <svg viewBox="0 0 70 30" fill="none">
@@ -1029,6 +1018,7 @@ export default function InteractiveTrain({ showControls = true }: InteractiveTra
               </defs>
             </svg>
           </div>
+          ))}
         </div>
       </div>
     </>
