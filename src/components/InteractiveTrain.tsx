@@ -416,19 +416,18 @@ export default function InteractiveTrain({ showControls = true }: InteractiveTra
     return () => clearInterval(interval);
   }, [smokeParticles.length]);
   
-  // Number of trains: default=2, random=2-4 (very rarely 1) — must be useMemo so it doesn't re-init on every render
+  // Number of trains: default=2, random=2-4 (very rarely 1)
   const numTrains = useMemo(() => {
     if (trackMode === 'default') return 2;
     return Math.random() > 0.1 ? Math.floor(Math.random() * 3) + 2 : 1;
   }, [trackMode, randomTick]);
 
+  // Progress per train — stable ref, only re-inits when train count changes
   const progress = useRef<number[]>([]);
-  const trainInitialized = useRef<number>(0);
-  if (trainInitialized.current !== numTrains) {
+  if (progress.current.length !== numTrains) {
     progress.current = Array.from({ length: numTrains }).map((_, i) =>
       trackMode === 'default' ? (i === 0 ? 0.1 : 0.6) : Math.random()
     );
-    trainInitialized.current = numTrains;
   }
   const animFrame = useRef<number>(0);
   const trailId = useRef(0);
@@ -871,41 +870,14 @@ export default function InteractiveTrain({ showControls = true }: InteractiveTra
               </g>
             ))}
 
-            {/* Signal indicators — shown in all layouts */}
+            {/* Signal visuals (visual only — interactions via HTML buttons below) */}
             {signalPositions.map(sig => {
               const active = activeSignals.has(sig.id);
-              const toggleSignal = (e: React.MouseEvent | React.TouchEvent) => {
-                e.stopPropagation();
-                if (!isMuted) {
-                  const s = new Audio("/sounds/train-move.mp3");
-                  s.volume = 0.15; s.play().catch(() => {});
-                }
-                setActiveSignals(prev => {
-                  const next = new Set(prev);
-                  if (next.has(sig.id)) next.delete(sig.id); else next.add(sig.id);
-                  return next;
-                });
-              };
               return (
-                <g key={sig.id} style={{ cursor: 'pointer', pointerEvents: 'all' }}
-                  onClick={toggleSignal}
-                  onMouseDown={(e) => { e.stopPropagation(); }}
-                  onTouchStart={(e) => { e.preventDefault(); e.stopPropagation(); toggleSignal(e as any); }}
-                >
-                  {/* Big invisible tap target (r=55 ≈ 53px on phone) */}
-                  <circle cx={sig.x} cy={sig.y} r="55" fill="transparent" style={{ cursor: 'pointer' }}
-                    onClick={toggleSignal}
-                    onMouseDown={(e) => { e.stopPropagation(); }}
-                    onTouchStart={(e) => { e.stopPropagation(); toggleSignal(e as any); }}
-                  />
-                  {/* Signal pole */}
-                  <line x1={sig.x} y1={sig.y} x2={sig.x} y2={sig.y + 18} stroke={active ? '#22c55e' : '#ef4444'} strokeWidth="1.5" opacity="0.6" pointerEvents="none"/>
-                  {/* Tappable ring — subtle visible affordance */}
-                  <circle cx={sig.x} cy={sig.y} r="28" fill="none" stroke={active ? '#22c55e' : '#ef4444'} strokeWidth="1" opacity="0.2" pointerEvents="none"/>
-                  {/* Signal light */}
+                <g key={`sig-vis-${sig.id}`}>
+                  <line x1={sig.x} y1={sig.y} x2={sig.x} y2={sig.y + 18} stroke={active ? '#22c55e' : '#ef4444'} strokeWidth="1.5" opacity="0.7" pointerEvents="none"/>
                   <circle cx={sig.x} cy={sig.y} r="9" fill={active ? '#22c55e' : '#ef4444'} opacity={active ? 1 : 0.85}
                     style={{ filter: active ? 'drop-shadow(0 0 7px #22c55e)' : 'drop-shadow(0 0 5px #ef4444)' }} pointerEvents="none" />
-                  {/* Active glow ring */}
                   {active && <circle cx={sig.x} cy={sig.y} r="14" fill="none" stroke="#22c55e" strokeWidth="2" opacity="0.4" pointerEvents="none" />}
                 </g>
               );
@@ -917,7 +889,38 @@ export default function InteractiveTrain({ showControls = true }: InteractiveTra
               <path ref={branchPathRef} d={branchTrackPath} fill="none" stroke="transparent" strokeWidth="40" pointerEvents="none"/>
             )}
           </svg>
-          
+
+          {/* Signal toggle buttons — HTML buttons outside SVG, reliable on iOS/mobile */}
+          {signalPositions.map(sig => {
+            const active = activeSignals.has(sig.id);
+            return (
+              <div key={`sig-btn-${sig.id}`}
+                onClick={() => {
+                  if (!isMuted) {
+                    const s = new Audio("/sounds/train-move.mp3");
+                    s.volume = 0.15; s.play().catch(() => {});
+                  }
+                  setActiveSignals(prev => {
+                    const next = new Set(prev);
+                    if (next.has(sig.id)) next.delete(sig.id); else next.add(sig.id);
+                    return next;
+                  });
+                }}
+                style={{
+                  position: 'absolute',
+                  left: `${(sig.x / 800) * 100}%`,
+                  top: `${(sig.y / 400) * 100}%`,
+                  transform: 'translate(-50%, -50%)',
+                  width: 64, height: 64, borderRadius: '50%',
+                  cursor: 'pointer', zIndex: 20,
+                  background: 'transparent',
+                }}
+                role="button"
+                aria-label={`Toggle signal ${sig.id}`}
+              />
+            );
+          })}
+
           {/* Trail dots */}
           {trail.map(dot => (
             <div key={dot.id} className="train-trail-dot" style={{ left: dot.x, top: dot.y }}/>
