@@ -416,18 +416,19 @@ export default function InteractiveTrain({ showControls = true }: InteractiveTra
     return () => clearInterval(interval);
   }, [smokeParticles.length]);
   
-  // Number of trains: default=2, random=2-4 (very rarely 1)
-  const numTrains = trackMode === 'default'
-    ? 2
-    : Math.random() > 0.1 ? Math.floor(Math.random() * 3) + 2 : 1;
+  // Number of trains: default=2, random=2-4 (very rarely 1) — must be useMemo so it doesn't re-init on every render
+  const numTrains = useMemo(() => {
+    if (trackMode === 'default') return 2;
+    return Math.random() > 0.1 ? Math.floor(Math.random() * 3) + 2 : 1;
+  }, [trackMode, randomTick]);
 
   const progress = useRef<number[]>([]);
-  const trainInitialized = useRef(false);
-  if (!trainInitialized.current || progress.current.length !== numTrains) {
+  const trainInitialized = useRef<number>(0);
+  if (trainInitialized.current !== numTrains) {
     progress.current = Array.from({ length: numTrains }).map((_, i) =>
       trackMode === 'default' ? (i === 0 ? 0.1 : 0.6) : Math.random()
     );
-    trainInitialized.current = true;
+    trainInitialized.current = numTrains;
   }
   const animFrame = useRef<number>(0);
   const trailId = useRef(0);
@@ -695,7 +696,6 @@ export default function InteractiveTrain({ showControls = true }: InteractiveTra
         .train-cursor {
           position: absolute;
           width: 60px; height: 26px;
-          pointer-events: all;
           z-index: 3;
           cursor: grab;
           transform: translate(-50%, -50%);
@@ -892,14 +892,16 @@ export default function InteractiveTrain({ showControls = true }: InteractiveTra
                   onMouseDown={(e) => { e.stopPropagation(); }}
                   onTouchStart={(e) => { e.preventDefault(); e.stopPropagation(); toggleSignal(e as any); }}
                 >
-                  {/* Big invisible tap target (r=45 ≈ 43px on phone) */}
-                  <circle cx={sig.x} cy={sig.y} r="45" fill="transparent" style={{ cursor: 'pointer' }}
+                  {/* Big invisible tap target (r=55 ≈ 53px on phone) */}
+                  <circle cx={sig.x} cy={sig.y} r="55" fill="transparent" style={{ cursor: 'pointer' }}
                     onClick={toggleSignal}
                     onMouseDown={(e) => { e.stopPropagation(); }}
-                    onTouchStart={(e) => { e.preventDefault(); e.stopPropagation(); toggleSignal(e as any); }}
+                    onTouchStart={(e) => { e.stopPropagation(); toggleSignal(e as any); }}
                   />
                   {/* Signal pole */}
                   <line x1={sig.x} y1={sig.y} x2={sig.x} y2={sig.y + 18} stroke={active ? '#22c55e' : '#ef4444'} strokeWidth="1.5" opacity="0.6" pointerEvents="none"/>
+                  {/* Tappable ring — subtle visible affordance */}
+                  <circle cx={sig.x} cy={sig.y} r="28" fill="none" stroke={active ? '#22c55e' : '#ef4444'} strokeWidth="1" opacity="0.2" pointerEvents="none"/>
                   {/* Signal light */}
                   <circle cx={sig.x} cy={sig.y} r="9" fill={active ? '#22c55e' : '#ef4444'} opacity={active ? 1 : 0.85}
                     style={{ filter: active ? 'drop-shadow(0 0 7px #22c55e)' : 'drop-shadow(0 0 5px #ef4444)' }} pointerEvents="none" />
@@ -948,6 +950,8 @@ export default function InteractiveTrain({ showControls = true }: InteractiveTra
               top: pos.y,
               opacity: visible ? (i === 0 ? 0.7 : 0.55) : 0,
               transform: `translate(-50%, -50%) rotate(${trainAngle[i] || 0}deg) scale(${trainScaleX[i] || 1}, ${trainScaleY[i] || 1})`,
+              // Don't block signal taps when not dragging — window-level handleDown handles drag detection
+              pointerEvents: (isDragging && i === 0) ? 'all' : 'none',
             }}
           >
             <svg viewBox="0 0 70 30" fill="none">
