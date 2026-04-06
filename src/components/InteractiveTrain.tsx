@@ -611,6 +611,10 @@ export default function InteractiveTrain({ showControls = true }: InteractiveTra
     };
 
     const handleDown = (e: MouseEvent | TouchEvent) => {
+      // Don't drag if touch landed on a signal button
+      const target = e.target as HTMLElement;
+      if (target.closest('[data-signal-btn]')) return;
+
       if (!trainRef.current) return;
       const rect = trainRef.current.getBoundingClientRect();
       const clientX = "touches" in e ? e.touches[0].clientX : e.clientX;
@@ -892,23 +896,25 @@ export default function InteractiveTrain({ showControls = true }: InteractiveTra
             )}
           </svg>
 
-          {/* Signal toggle buttons — HTML buttons outside SVG, reliable on iOS/mobile */}
+          {/* Signal toggle buttons — handle touch directly to avoid click延迟 on iOS */}
           {signalPositions.map(sig => {
             const active = activeSignals.has(sig.id);
+            const handleSignalTap = () => {
+              if (!isMuted) {
+                const s = new Audio("/sounds/train-move.mp3");
+                s.volume = 0.15; s.play().catch(() => {});
+              }
+              setActiveSignals(prev => {
+                const next = new Set(prev);
+                if (next.has(sig.id)) next.delete(sig.id); else next.add(sig.id);
+                return next;
+              });
+            };
             return (
               <div key={`sig-btn-${sig.id}`}
-                onTouchStart={(e) => { e.stopPropagation(); e.preventDefault(); }}
-                onClick={() => {
-                  if (!isMuted) {
-                    const s = new Audio("/sounds/train-move.mp3");
-                    s.volume = 0.15; s.play().catch(() => {});
-                  }
-                  setActiveSignals(prev => {
-                    const next = new Set(prev);
-                    if (next.has(sig.id)) next.delete(sig.id); else next.add(sig.id);
-                    return next;
-                  });
-                }}
+                data-signal-btn="true"
+                onTouchStart={(e) => { e.stopPropagation(); handleSignalTap(); }}
+                onClick={handleSignalTap}
                 style={{
                   position: 'absolute',
                   left: `${(sig.x / 800) * 100}%`,
@@ -917,6 +923,7 @@ export default function InteractiveTrain({ showControls = true }: InteractiveTra
                   width: 64, height: 64, borderRadius: '50%',
                   cursor: 'pointer', zIndex: 20,
                   background: 'transparent',
+                  touchAction: 'manipulation',
                 }}
                 role="button"
                 aria-label={`Toggle signal ${sig.id}`}
