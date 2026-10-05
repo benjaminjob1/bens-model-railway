@@ -1,18 +1,20 @@
 "use client";
 
 import { useEffect, useRef } from "react";
+import { useSound } from "@/context/SoundContext";
 
 const WHISTLE_URL = "/sounds/whistle.mp3";
 const DEPARTURE_URL = "/sounds/departure.mp3";
 
 export function useTrainWhistle() {
+  const { isMuted } = useSound();
   const ref = useRef<HTMLAudioElement | null>(null);
   useEffect(() => {
     ref.current = new Audio(WHISTLE_URL);
     ref.current.volume = 0.25;
   }, []);
   return () => {
-    if (ref.current) {
+    if (!isMuted && ref.current) {
       ref.current.currentTime = 0;
       ref.current.play().catch(() => {});
     }
@@ -20,6 +22,7 @@ export function useTrainWhistle() {
 }
 
 export function useDepartureSound() {
+  const { isMuted } = useSound();
   const ref = useRef<HTMLAudioElement | null>(null);
   useEffect(() => {
     ref.current = new Audio(DEPARTURE_URL);
@@ -27,13 +30,13 @@ export function useDepartureSound() {
   }, []);
   useEffect(() => {
     const el = ref.current;
-    if (!el) return;
+    if (!el || isMuted) return;
     el.play().catch(() => {});
     return () => {
       el.pause();
       el.currentTime = 0;
     };
-  }, []);
+  }, [isMuted]);
 }
 
 // Wrap a child element to play train whistle on click
@@ -52,7 +55,7 @@ export function Soundful({
   return (
     <a
       href={href}
-      onClick={(e) => { play(); onClick?.(); }}
+      onClick={() => { play(); onClick?.(); }}
       className={className}
     >
       {children}

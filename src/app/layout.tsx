@@ -1,8 +1,11 @@
 import type { Metadata } from "next";
 import { Inter, Playfair_Display } from "next/font/google";
 import { Analytics } from "@vercel/analytics/next";
+import Script from "next/script";
 import "./globals.css";
 import DisclaimerBanner from "@/components/DisclaimerBanner";
+import MotionPreferences from "@/components/MotionPreferences";
+import SoundPreferences from "@/components/SoundPreferences";
 import { SoundProvider } from "@/context/SoundContext";
 
 const inter = Inter({
@@ -30,18 +33,9 @@ export default function RootLayout({
   return (
     <html lang="en" className="scroll-smooth">
       <head>
-        <script
-          dangerouslySetInnerHTML={{
-            __html: `
-              (function() {
-                var dismissed = localStorage.getItem('railway-disclaimer-dismissed');
-                document.documentElement.style.setProperty('--banner-h', dismissed ? '0px' : '48px');
-              })();
-            `,
-          }}
-        />
-        <script
+        <Script
           type="module"
+          strategy="afterInteractive"
           src="https://ajax.googleapis.com/ajax/libs/model-viewer/3.5.0/model-viewer.min.js"
         />
         <link
@@ -51,12 +45,15 @@ export default function RootLayout({
       </head>
       <body
         className={`${inter.variable} ${playfair.variable} font-body bg-railway-bg text-railway-text antialiased`}
-        style={{ paddingTop: "var(--banner-h, 48px)" }}
+        style={{ paddingTop: "var(--banner-h, 0px)" }}
       >
-        <DisclaimerBanner />
-        <SoundProvider>
-          {children}
-        </SoundProvider>
+        <MotionPreferences>
+          <DisclaimerBanner />
+          <SoundProvider>
+            <SoundPreferences />
+            {children}
+          </SoundProvider>
+        </MotionPreferences>
         <Analytics />
       </body>
     </html>

@@ -1,7 +1,8 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
-import Image from "next/image";
+import Link from "next/link";
+import { useSound } from "@/context/SoundContext";
 import InteractiveTrain from "@/components/InteractiveTrain";
 
 const RAILWAY_DATA = {
@@ -112,7 +113,7 @@ const RAILWAY_DATA = {
 
   helstonBranch: {
     name: "Helston Branch",
-    tagline: "England's most southerly standard gauge railway — almost to the Lizard",
+    tagline: "England&apos;s most southerly standard gauge railway — almost to the Lizard",
     era: "1887–1964 (heritage: 2005–present)",
     status: "Mostly closed; heritage railway active",
     color: "#d4a843",
@@ -178,11 +179,11 @@ const RAILWAY_DATA = {
       },
       {
         name: "Prospidnick",
-        desc: "Served the farms of the Prospidnick area. The current heritage railway's upper limit of operations.",
+        desc: "Served the farms of the Prospidnick area. The current heritage railway&apos;s upper limit of operations.",
       },
       {
         name: "Truthall Platform",
-        desc: "A small platform serving the Truthall estate. The heritage railway's current terminus.",
+        desc: "A small platform serving the Truthall estate. The heritage railway&apos;s current terminus.",
       },
       {
         name: "Helston",
@@ -208,7 +209,7 @@ const RAILWAY_DATA = {
       },
       {
         name: "Royal Albert Bridge",
-        desc: "Designed by Isambard Kingdom Brunel, opened 1859. Carries the Cornish Main Line across the River Tamar between Devon and Cornwall. A Grade I listed structure and one of Britain's most iconic railway bridges — 1,000ft long with 19 wrought-iron arches.",
+        desc: "Designed by Isambard Kingdom Brunel, opened 1859. Carries the Cornish Main Line across the River Tamar between Devon and Cornwall. A Grade I listed structure and one of Britain&apos;s most iconic railway bridges — 1,000ft long with 19 wrought-iron arches.",
       },
       {
         name: "Tamar Valley Line",
@@ -358,14 +359,11 @@ function SectionHero({ title, tagline, era, status, color }: { title: string; ta
 
 // Nav component (duplicated here for this page)
 function Nav({ active }: { active: string }) {
+  const { isMuted, setIsMuted } = useSound();
   const navClickRef = useRef<HTMLAudioElement | null>(null);
   useEffect(() => {
     navClickRef.current = new Audio("/sounds/nav-click.mp3");
     navClickRef.current.volume = 0.3;
-    // Page load bell
-    const bell = new Audio("/sounds/page-load.mp3");
-    bell.volume = 0.2;
-    bell.play().catch(() => {});
   }, []);
   const links = [
     { id: "cornish-main", label: "Cornish Main Line", icon: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg> },
@@ -378,32 +376,37 @@ function Nav({ active }: { active: string }) {
   return (
     <nav className="sticky top-0 z-40 bg-railway-bg/90 backdrop-blur-lg border-b border-railway-border/30 py-4 mb-10">
       <div className="max-w-6xl mx-auto px-4">
-        <div className="flex items-center gap-3">
+        <div className="flex min-w-0 items-center gap-3">
           {/* Home button */}
-          <a
+          <Link
             href="/"
-            onClick={() => { if (navClickRef.current) { navClickRef.current.currentTime = 0; navClickRef.current.play().catch(() => {}); } }}
-            className="flex items-center gap-2.5 px-5 py-3 rounded-xl bg-railway-surface border border-railway-border/60 text-railway-text hover:text-railway-accent hover:border-railway-accent/40 hover:bg-railway-accent/5 transition-all duration-200 text-sm font-semibold shadow-lg shadow-black/20"
+            onClick={() => { if (!isMuted && navClickRef.current) { navClickRef.current.currentTime = 0; navClickRef.current.play().catch(() => {}); } }}
+            className="flex shrink-0 items-center gap-2.5 px-5 py-3 rounded-xl bg-railway-surface border border-railway-border/60 text-railway-text hover:text-railway-accent hover:border-railway-accent/40 hover:bg-railway-accent/5 transition-all duration-200 text-sm font-semibold shadow-lg shadow-black/20"
           >
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
               <polyline points="9 22 9 12 15 12 15 22"/>
             </svg>
             <span>Home</span>
-          </a>
+          </Link>
           
+          <button type="button" onClick={() => setIsMuted(!isMuted)}
+            aria-label={isMuted ? "Unmute sounds" : "Mute sounds"} aria-pressed={isMuted}
+            className="p-3 rounded-xl text-railway-muted hover:text-railway-accent border border-railway-border">
+            <span aria-hidden="true">{isMuted ? "🔇" : "🔊"}</span>
+          </button>
           {/* Divider */}
           <div className="w-px h-8 bg-railway-border/50 mx-1"/>
           
           {/* Section links */}
-          <div className="flex items-center gap-2 overflow-x-auto scrollbar-hide flex-1 pb-1">
+          <div className="flex min-w-0 items-center gap-2 overflow-x-auto scrollbar-hide flex-1 pb-1">
             {links.map((l) => {
               const isActive = active === l.id;
               return (
                 <a
                   key={l.id}
                   href={`#${l.id}`}
-                  onClick={() => { if (navClickRef.current) { navClickRef.current.currentTime = 0; navClickRef.current.play().catch(() => {}); } }}
+                  onClick={() => { if (!isMuted && navClickRef.current) { navClickRef.current.currentTime = 0; navClickRef.current.play().catch(() => {}); } }}
                   className={`flex items-center gap-2 whitespace-nowrap px-4 py-2.5 rounded-xl text-xs font-bold tracking-wide transition-all duration-200 ${
                     isActive
                       ? "bg-railway-accent text-railway-bg shadow-lg shadow-railway-accent/25"
@@ -497,7 +500,7 @@ export default function RealRailways() {
                 <p className="text-railway-muted text-sm leading-relaxed">
                   Designed by Isambard Kingdom Brunel and opened in 1859, the Royal Albert Bridge
                   crosses the River Tamar between Devon (St Budeaux) and Cornwall (Saltash). It
-                  remains one of Britain's most iconic railway structures — 1,000ft long with
+                  remains one of Britain&apos;s most iconic railway structures — 1,000ft long with
                   19 wrought-iron arches, carrying the Cornish Main Line into Cornwall.
                 </p>
                 <div className="mt-3 grid grid-cols-3 gap-2 text-center">
@@ -617,7 +620,7 @@ export default function RealRailways() {
                   Working since 2002 to restore the old Helston Branch line. Currently operating
                   between Prospidnick Halt and Truthall Platform. A long-term project to extend
                   back to Helston is ongoing. Their goal: rebuild what was lost and bring trains
-                  back to England's most southerly town.
+                  back to England&apos;s most southerly town.
                 </p>
                 <a
                   href="https://www.helstonrailway.co.uk"
