@@ -209,7 +209,7 @@ const RAILWAY_DATA = {
       },
       {
         name: "Royal Albert Bridge",
-        desc: "Designed by Isambard Kingdom Brunel, opened 1859. Carries the Cornish Main Line across the River Tamar between Devon and Cornwall. A Grade I listed structure and one of Britain’s most iconic railway bridges — 1,000ft long with 19 wrought-iron arches.",
+        desc: "Designed by Isambard Kingdom Brunel, opened 1859. Carries the Cornish Main Line across the River Tamar between Devon and Cornwall. A Grade I listed structure and one of Britain’s most iconic railway bridges — about 2,187ft (667m) long across 19 spans, including two 455ft wrought-iron main trusses.",
       },
       {
         name: "Tamar Valley Line",
@@ -500,14 +500,15 @@ export default function RealRailways() {
                 <p className="text-railway-muted text-sm leading-relaxed">
                   Designed by Isambard Kingdom Brunel and opened in 1859, the Royal Albert Bridge
                   crosses the River Tamar between Devon (St Budeaux) and Cornwall (Saltash). It
-                  remains one of Britain&apos;s most iconic railway structures — 1,000ft long with
-                  19 wrought-iron arches, carrying the Cornish Main Line into Cornwall.
+                  remains one of Britain&apos;s most iconic railway structures — about 2,187ft (667m)
+                  long across 19 spans, including two 455ft wrought-iron main trusses, carrying the
+                  Cornish Main Line into Cornwall.
                 </p>
                 <div className="mt-3 grid grid-cols-3 gap-2 text-center">
                   {[
                     { label: "Opened", value: "1859" },
-                    { label: "Length", value: "1,000ft" },
-                    { label: "Arches", value: "19" },
+                    { label: "Length", value: "2,187ft" },
+                    { label: "Spans", value: "19" },
                   ].map((stat) => (
                     <div key={stat.label} className="bg-railway-bg rounded-lg p-2">
                       <p className="text-railway-accent font-bold text-sm">{stat.value}</p>
