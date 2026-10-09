@@ -352,6 +352,17 @@ export default function InteractiveTrain({ showControls = true }: InteractiveTra
 
   const { isMuted } = useSound();
   const isMutedRef = useRef(isMuted);
+  const toggleSignal = useCallback((id: string) => {
+    if (!isMutedRef.current) {
+      const s = new Audio("/sounds/train-move.mp3");
+      s.volume = 0.15; s.play().catch(() => {});
+    }
+    setActiveSignals(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  }, []);
   useEffect(() => {
     isMutedRef.current = isMuted;
     if (ambientRef.current) {
@@ -683,6 +694,21 @@ export default function InteractiveTrain({ showControls = true }: InteractiveTra
     };
   }, [isDragging, visible, svgRect, trackMode, randomTick, numTrains, reducedMotion, updateSvgRect]);
 
+  // Tap-through signals: only when the tap did not land on a link, control or dialog.
+  useEffect(() => {
+    const onClick = (event: MouseEvent) => {
+      const target = event.target as HTMLElement | null;
+      if (target?.closest('a, button, input, select, textarea, label, summary, [role=dialog], [role=button]')) return;
+      const radius = 32;
+      const hit = signalPositions.find(sig => Math.hypot(
+        event.clientX - (svgRect.left + sig.x / 800 * svgRect.width),
+        event.clientY - (svgRect.top + sig.y / 400 * svgRect.height)) <= radius);
+      if (hit) toggleSignal(hit.id);
+    };
+    window.addEventListener('click', onClick);
+    return () => window.removeEventListener('click', onClick);
+  }, [signalPositions, svgRect, toggleSignal]);
+
   // Always use the first path as main (it's always a closed oval in every layout)
   // Branch = first branch-type path that differs from main, else undefined
   const mainTrackPath = trackParts[0]?.path || '';
@@ -915,31 +941,20 @@ export default function InteractiveTrain({ showControls = true }: InteractiveTra
           {/* Signal toggle buttons — handle touch directly to avoid click延迟 on iOS */}
           {hydrated && createPortal(signalPositions.map(sig => {
             const active = activeSignals.has(sig.id);
-            const handleSignalTap = () => {
-              if (!isMutedRef.current) {
-                const s = new Audio("/sounds/train-move.mp3");
-                s.volume = 0.15; s.play().catch(() => {});
-              }
-              setActiveSignals(prev => {
-                const next = new Set(prev);
-                if (next.has(sig.id)) next.delete(sig.id); else next.add(sig.id);
-                return next;
-              });
-            };
+            // Pointer taps are resolved by the window click handler so these invisible
+            // targets never sit on top of page content; the buttons stay for keyboard users.
             return (
               <button type="button" key={`sig-btn-${sig.id}`}
                 data-signal-btn="true"
-                onPointerDown={(e) => e.stopPropagation()}
-                onClick={handleSignalTap}
+                onClick={() => toggleSignal(sig.id)}
                 style={{
                   position: 'fixed',
                   left: svgRect.left + sig.x / 800 * svgRect.width,
                   top: svgRect.top + sig.y / 400 * svgRect.height,
                   transform: 'translate(-50%, -50%)',
                   width: 64, height: 64, borderRadius: '50%',
-                  cursor: 'pointer', zIndex: 20, pointerEvents: 'auto',
+                  zIndex: 20, pointerEvents: 'none',
                   background: 'transparent',
-                  touchAction: 'manipulation',
                 }}
                 aria-pressed={active}
                 aria-label={`Toggle signal ${sig.id}`}

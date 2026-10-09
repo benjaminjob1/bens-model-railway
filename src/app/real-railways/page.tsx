@@ -113,7 +113,7 @@ const RAILWAY_DATA = {
 
   helstonBranch: {
     name: "Helston Branch",
-    tagline: "England&apos;s most southerly standard gauge railway — almost to the Lizard",
+    tagline: "England’s most southerly standard gauge railway — almost to the Lizard",
     era: "1887–1964 (heritage: 2005–present)",
     status: "Mostly closed; heritage railway active",
     color: "#d4a843",
@@ -179,11 +179,11 @@ const RAILWAY_DATA = {
       },
       {
         name: "Prospidnick",
-        desc: "Served the farms of the Prospidnick area. The current heritage railway&apos;s upper limit of operations.",
+        desc: "Served the farms of the Prospidnick area. The current heritage railway’s upper limit of operations.",
       },
       {
         name: "Truthall Platform",
-        desc: "A small platform serving the Truthall estate. The heritage railway&apos;s current terminus.",
+        desc: "A small platform serving the Truthall estate. The heritage railway’s current terminus.",
       },
       {
         name: "Helston",
@@ -209,7 +209,7 @@ const RAILWAY_DATA = {
       },
       {
         name: "Royal Albert Bridge",
-        desc: "Designed by Isambard Kingdom Brunel, opened 1859. Carries the Cornish Main Line across the River Tamar between Devon and Cornwall. A Grade I listed structure and one of Britain&apos;s most iconic railway bridges — 1,000ft long with 19 wrought-iron arches.",
+        desc: "Designed by Isambard Kingdom Brunel, opened 1859. Carries the Cornish Main Line across the River Tamar between Devon and Cornwall. A Grade I listed structure and one of Britain’s most iconic railway bridges — 1,000ft long with 19 wrought-iron arches.",
       },
       {
         name: "Tamar Valley Line",
