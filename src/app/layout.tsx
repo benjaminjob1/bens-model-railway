@@ -45,7 +45,6 @@ export default function RootLayout({
       </head>
       <body
         className={`${inter.variable} ${playfair.variable} font-body bg-railway-bg text-railway-text antialiased`}
-        style={{ paddingTop: "var(--banner-h, 0px)" }}
       >
         <MotionPreferences>
           <DisclaimerBanner />

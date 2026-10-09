@@ -26,7 +26,9 @@ export default function DisclaimerBanner() {
 
   return (
     <>
-      {/* Fixed banner at the very top of the viewport */}
+      {/* Fixed overlay at the very top of the viewport. It never reserves flow space,
+          so page content doesn't jump when it appears or is dismissed; only fixed/sticky
+          navs read --banner-h to sit below it. */}
       <AnimatePresence>
         {visible && (
           <motion.div ref={bannerRef}

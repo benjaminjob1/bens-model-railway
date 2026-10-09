@@ -374,7 +374,7 @@ function Nav({ active }: { active: string }) {
   ];
 
   return (
-    <nav className="sticky top-0 z-40 bg-railway-bg/90 backdrop-blur-lg border-b border-railway-border/30 py-4 mb-10">
+    <nav className="sticky z-40 bg-railway-bg/90 backdrop-blur-lg border-b border-railway-border/30 py-4 mb-10 transition-[top] duration-300" style={{ top: "var(--banner-h, 0px)" }}>
       <div className="max-w-6xl mx-auto px-4">
         <div className="flex min-w-0 items-center gap-3">
           {/* Home button */}
