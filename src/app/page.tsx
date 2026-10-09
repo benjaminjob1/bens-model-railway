@@ -175,7 +175,7 @@ function Hero({ isMuted }: { isMuted: boolean }) {
   const y = useTransform(scrollY, [0, 600], [0, 120]);
   const opacity = useTransform(scrollY, [0, 400], [1, 0]);
   return (
-    <section id="home" className="relative min-h-screen flex items-center justify-center overflow-hidden">
+    <section id="home" className="relative min-h-screen flex items-center justify-center overflow-hidden pb-16" style={{ paddingTop: "calc(var(--banner-h, 0px) + 6rem)" }}>
       <motion.div style={{ y, opacity }} className="absolute inset-0 hero-bg hero-grain"/>
       <div className="absolute inset-0 pointer-events-none">
         <div className="absolute top-[-15%] left-1/2 -translate-x-1/2 w-[900px] h-[600px] rounded-full bg-railway-accent/10 blur-[80px]" style={{ animation: "glowPulse 4s ease-in-out infinite" }}/>
