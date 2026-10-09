@@ -647,9 +647,9 @@ export default function InteractiveTrain({ showControls = true }: InteractiveTra
       const views = progress.current.map(viewFor);
       trainsRef.current = views;
       setTrains(views);
-      const lead = views[0];
+      const lead = movingLeadOf(views, controlsRef.current);
       const now = Date.now();
-      if (lead && anyMovingRef.current && now - lastTrailTime.current > 80) {
+      if (lead && now - lastTrailTime.current > 80) {
         lastTrailTime.current = now;
         const id = ++trailId.current;
         setTrail(t => [...t.slice(-25), { x: lead.x, y: lead.y, id }]);
