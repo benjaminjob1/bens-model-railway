@@ -395,6 +395,8 @@ function Nav({ active }: { active: string }) {
             className="p-3 rounded-xl text-railway-muted hover:text-railway-accent border border-railway-border">
             <span aria-hidden="true">{isMuted ? "🔇" : "🔊"}</span>
           </button>
+          {/* Train controls render here (from InteractiveTrain) so they never float over page content */}
+          <span id="train-controls-slot" className="contents"/>
           {/* Divider */}
           <div className="w-px h-8 bg-railway-border/50 mx-1"/>
           

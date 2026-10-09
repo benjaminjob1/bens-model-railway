@@ -100,6 +100,9 @@ function Nav({ active, isMuted, onToggleMute }: { active: string; isMuted: boole
             </a>
           ))}
         </div>
+        <div className="flex items-center gap-1">
+        {/* Train controls render here (from InteractiveTrain) so they never float over page content */}
+        <span id="train-controls-slot" className="contents"/>
         <button
           onClick={onToggleMute}
           aria-label={isMuted ? "Unmute sounds" : "Mute sounds"}
@@ -123,6 +126,7 @@ function Nav({ active, isMuted, onToggleMute }: { active: string; isMuted: boole
         <button aria-label={menuOpen ? "Close navigation" : "Open navigation"} aria-expanded={menuOpen} aria-controls="mobile-navigation" className="xl:hidden text-railway-muted p-3" onClick={() => { playMenuToggle(); setMenuOpen(!menuOpen); }}>
           <svg width="22" height="22" viewBox="0 0 22 22" fill="none">{menuOpen ? <path d="M4 4L18 18M18 4L4 18" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/> : <path d="M3 6h16M3 11h16M3 16h16" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>}</svg>
         </button>
+        </div>
       </div>
       <AnimatePresence>{menuOpen && (
         <motion.div initial={{ opacity: 0, y: -20, scale: 0.96 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, y: -10, scale: 0.96 }}
