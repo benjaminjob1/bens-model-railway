@@ -581,9 +581,13 @@ export default function InteractiveTrain({ showControls = true }: InteractiveTra
   }, []);
 
   const handleModeChange = useCallback((mode: 'default' | 'random') => {
+    // A new layout starts fresh running trains (unless "Pause all" is on), so resume the
+    // ambient loop here, inside the click gesture, rather than waiting for the state effect.
+    const layoutChanges = mode === 'random' || trackMode !== mode;
     if (mode === 'random') setRandomTick(Date.now());
     writePreference('railway-track-mode', mode);
-  }, []);
+    if (layoutChanges && !controlsRef.current.allPaused && !reducedMotion) startAmbient();
+  }, [trackMode, reducedMotion, startAmbient]);
 
   const updateSvgRect = useCallback(() => {
     if (!svgRef.current) return;
