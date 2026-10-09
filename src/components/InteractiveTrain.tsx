@@ -330,7 +330,7 @@ function seededRandom(seed: number) {
 export default function InteractiveTrain({ showControls = true }: InteractiveTrainProps) {
   const trainRef = useRef<HTMLDivElement>(null);
   const mainPathRef = useRef<SVGPathElement>(null);
-  const branchPathRef = useRef<SVGPathElement>(null);
+  const branchPathsRef = useRef<Array<SVGPathElement | null>>([]);
   const svgRef = useRef<SVGSVGElement>(null);
   
   const hydrated = useHydrated();
@@ -382,6 +382,19 @@ export default function InteractiveTrain({ showControls = true }: InteractiveTra
     });
   }, []);
   const unmutedAtRef = useRef(0);
+  // Starts/resumes the ambient loop. Must be called from inside a user gesture.
+  const startAmbient = useCallback(() => {
+    if (isMutedRef.current) return;
+    let a = ambientRef.current;
+    if (!a) {
+      a = new Audio('/sounds/train-move.mp3');
+      a.loop = true;
+      a.volume = 0.12;
+      ambientRef.current = a;
+    }
+    a.muted = false;
+    if (a.paused) a.play().catch(() => {});
+  }, []);
   useEffect(() => {
     isMutedRef.current = isMuted;
     if (isMuted) {
@@ -398,15 +411,7 @@ export default function InteractiveTrain({ showControls = true }: InteractiveTra
     if (typeof window === 'undefined') return;
     const handleGesture = (e: Event) => {
       if (isMutedRef.current || !anyMovingRef.current || e.timeStamp <= unmutedAtRef.current) return;
-      let a = ambientRef.current;
-      if (!a) {
-        a = new Audio('/sounds/train-move.mp3');
-        a.loop = true;
-        a.volume = 0.12;
-        ambientRef.current = a;
-      }
-      a.muted = false;
-      if (a.paused) a.play().catch(() => {});
+      startAmbient();
       if (hasInteractedRef.current) return;
       hasInteractedRef.current = true;
       const rad = (leadOf(trainsRef.current).angle * Math.PI) / 180;
@@ -428,7 +433,7 @@ export default function InteractiveTrain({ showControls = true }: InteractiveTra
       ambientRef.current = null;
       hasInteractedRef.current = false;
     };
-  }, []);
+  }, [startAmbient]);
 
   // Signal positions: fixed in default, random each time Random is clicked
   const signalPositions = useMemo(() => {
@@ -577,7 +582,8 @@ export default function InteractiveTrain({ showControls = true }: InteractiveTra
     if (typeof window === "undefined") return;
 
     const mainPath = mainPathRef.current;
-    const branchPath = branchPathRef.current;
+    const branchCandidates = branchPathsRef.current.filter((el): el is SVGPathElement => !!el && el.isConnected);
+    let branchPath: SVGPathElement | null = null;
     if (!mainPath) return;
 
     // Route: main loop to the junction, out along the branch and back, then the rest of the
@@ -585,9 +591,9 @@ export default function InteractiveTrain({ showControls = true }: InteractiveTra
     // the previous layout's branch length (which used to park trains at the loop start).
     const mainLength = mainPath.getTotalLength();
     let route: Route = { mainLength, branchLength: 0, junction: 0 };
-    if (branchPath) {
-      const branchLength = branchPath.getTotalLength();
-      const start = branchPath.getPointAtLength(0);
+    for (const candidate of branchCandidates) {
+      const branchLength = candidate.getTotalLength();
+      const start = candidate.getPointAtLength(0);
       let best = Infinity, junction = 0;
       for (let i = 0; i <= 400; i++) {
         const at = (i / 400) * mainLength;
@@ -596,7 +602,7 @@ export default function InteractiveTrain({ showControls = true }: InteractiveTra
         if (d < best) { best = d; junction = at; }
       }
       // Only run onto a branch that actually leaves the loop; otherwise trains would teleport.
-      if (best <= 24 && branchLength > 0) route = { mainLength, branchLength, junction };
+      if (best <= 24 && branchLength > 0) { route = { mainLength, branchLength, junction }; branchPath = candidate; break; }
     }
     const total = routeLength(route);
 
@@ -786,7 +792,8 @@ export default function InteractiveTrain({ showControls = true }: InteractiveTra
   // Always use the first path as main (it's always a closed oval in every layout)
   // Branch = first branch-type path that differs from main, else undefined
   const mainTrackPath = trackParts[0]?.path || '';
-  const branchTrackPath = trackParts.find(p => p.type === 'branch' && p.path !== mainTrackPath)?.path || '';
+  // Every branch candidate is measured; the first one whose start touches the main loop is used.
+  const branchTrackPaths = trackParts.filter(p => p.type === 'branch' && p.path && p.path !== mainTrackPath).map(p => p.path);
 
   const formatSpeed = (value: number) => `${Number(value.toFixed(2))}×`;
   const controlsUi = (
@@ -816,7 +823,7 @@ export default function InteractiveTrain({ showControls = true }: InteractiveTra
               Pause all
             </button>
             <button type="button" className="track-mode-btn default"
-              disabled={!!reducedMotion} onClick={() => updateControls(runAll)}>
+              disabled={!!reducedMotion} onClick={() => { updateControls(runAll); startAmbient(); }}>
               Run all
             </button>
           </div>
@@ -841,7 +848,7 @@ export default function InteractiveTrain({ showControls = true }: InteractiveTra
                     <span className="train-controls-name">{name}</span>
                     <button type="button" className={`track-mode-btn default ${moving ? '' : 'active'}`}
                       aria-pressed={!moving} aria-label={`${moving ? 'Pause' : 'Run'} ${name}`}
-                      disabled={!!reducedMotion} onClick={() => updateControls(state => toggleTrain(state, i))}>
+                      disabled={!!reducedMotion} onClick={() => { updateControls(state => toggleTrain(state, i)); if (!moving) startAmbient(); }}>
                       {moving ? 'Pause' : 'Run'}
                     </button>
                     <input type="range" className="train-controls-speed small" aria-label={`${name} speed`}
@@ -1144,9 +1151,9 @@ export default function InteractiveTrain({ showControls = true }: InteractiveTra
 
             {/* Hidden main path for train interaction — pointerEvents="none" so clicks pass through to signals beneath */}
             <path ref={mainPathRef} d={mainTrackPath} fill="none" stroke="transparent" strokeWidth="50" pointerEvents="none"/>
-            {branchTrackPath && (
-              <path ref={branchPathRef} d={branchTrackPath} fill="none" stroke="transparent" strokeWidth="40" pointerEvents="none"/>
-            )}
+            {branchTrackPaths.map((d, i) => (
+              <path key={i} ref={el => { branchPathsRef.current[i] = el; }} d={d} fill="none" stroke="transparent" strokeWidth="40" pointerEvents="none"/>
+            ))}
           </svg>
 
           {/* Signal toggle buttons — handle touch directly to avoid click延迟 on iOS */}
