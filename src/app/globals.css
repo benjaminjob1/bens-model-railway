@@ -1,6 +1,5 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import "tailwindcss";
+@config "../../tailwind.config.ts";
 
 @layer base {
   html {
@@ -310,4 +309,16 @@
 model-viewer {
   --progress-bar-color: #d4a843;
   --progress-bar-height: 2px;
+}
+
+/* Visible keyboard focus and readable anchors under the fixed header. */
+:focus-visible { outline: 2px solid #d4a843; outline-offset: 4px; }
+section[id] { scroll-margin-top: calc(var(--banner-h, 0px) + 96px); }
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto !important; }
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
 }

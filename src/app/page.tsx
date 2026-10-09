@@ -1,9 +1,9 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import Image from "next/image";
+import { useDialog } from "@/lib/useDialog";
 import InteractiveTrain from "@/components/InteractiveTrain";
-import SoundConsentModal from "@/components/SoundConsentModal";
 import { useSound } from "@/context/SoundContext";
 import { motion, useScroll, useTransform, useInView, AnimatePresence } from "framer-motion";
 
@@ -65,7 +65,6 @@ const GALLERY_ITEMS = [
 function Nav({ active, isMuted, onToggleMute }: { active: string; isMuted: boolean; onToggleMute: () => void }) {
   const [scrolled, setScrolled] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
-  const [bannerVisible, setBannerVisible] = useState(true);
   const navClickRef = useRef<HTMLAudioElement | null>(null);
   const menuToggleRef = useRef<HTMLAudioElement | null>(null);
   useEffect(() => {
@@ -75,7 +74,6 @@ function Nav({ active, isMuted, onToggleMute }: { active: string; isMuted: boole
     menuToggleRef.current.volume = 0.3;
   }, []);
   useEffect(() => {
-    setBannerVisible(!localStorage.getItem("railway-disclaimer-dismissed"));
     const onScroll = () => setScrolled(window.scrollY > 40);
     window.addEventListener("scroll", onScroll, { passive: true });
     return () => window.removeEventListener("scroll", onScroll);
@@ -87,13 +85,13 @@ function Nav({ active, isMuted, onToggleMute }: { active: string; isMuted: boole
   const playNavClick = () => { if (!isMuted && navClickRef.current) { navClickRef.current.currentTime = 0; navClickRef.current.play().catch(() => {}); } };
   const playMenuToggle = () => { if (!isMuted && menuToggleRef.current) { menuToggleRef.current.currentTime = 0; menuToggleRef.current.play().catch(() => {}); } };
   return (
-    <motion.nav className={`fixed left-0 right-0 z-[9998] transition-all duration-300 ${scrolled ? "nav-blur bg-railway-bg/80 border-b border-railway-border/50" : "bg-transparent"}`} style={{ top: bannerVisible ? "48px" : "0" }}
+    <motion.nav className={`fixed left-0 right-0 z-[9998] transition-all duration-300 ${scrolled ? "nav-blur bg-railway-bg/80 border-b border-railway-border/50" : "bg-transparent"}`} style={{ top: "var(--banner-h, 0px)" }}
       initial={{ y: -80 }} animate={{ y: 0 }} transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}>
       <div className="max-w-6xl mx-auto px-4 py-4 flex items-center justify-between">
         <span className="font-heading text-lg font-bold text-railway-accent tracking-wide">Ben&apos;s Model Railway</span>
-        <div className="hidden md:flex items-center gap-3">
+        <div className="hidden xl:flex items-center gap-3">
           {links.map((l) => (
-            <a key={l.label} href={l.page ?? `#${l.id}`} onClick={playNavClick}
+            <a key={l.label} aria-current={active === l.id ? "location" : undefined} href={l.page ?? `#${l.id}`} onClick={playNavClick}
               className={`relative px-4 py-2 text-xs font-semibold tracking-wide rounded-xl transition-all duration-200 ${active === l.id ? "text-railway-accent bg-railway-accent/10" : "text-railway-muted hover:text-railway-text hover:bg-white/5"}`}>
               <span className="relative z-10">{l.label}</span>
               {active === l.id && (
@@ -104,6 +102,8 @@ function Nav({ active, isMuted, onToggleMute }: { active: string; isMuted: boole
         </div>
         <button
           onClick={onToggleMute}
+          aria-label={isMuted ? "Unmute sounds" : "Mute sounds"}
+          aria-pressed={isMuted}
           title={isMuted ? "Unmute sounds" : "Mute sounds"}
           className="p-2 rounded-xl text-railway-muted hover:text-railway-accent hover:bg-railway-accent/10 transition-all duration-200 active:scale-95"
         >
@@ -120,14 +120,14 @@ function Nav({ active, isMuted, onToggleMute }: { active: string; isMuted: boole
             </svg>
           )}
         </button>
-        <button className="md:hidden text-railway-muted p-1" onClick={() => { playMenuToggle(); setMenuOpen(!menuOpen); }}>
+        <button aria-label={menuOpen ? "Close navigation" : "Open navigation"} aria-expanded={menuOpen} aria-controls="mobile-navigation" className="xl:hidden text-railway-muted p-3" onClick={() => { playMenuToggle(); setMenuOpen(!menuOpen); }}>
           <svg width="22" height="22" viewBox="0 0 22 22" fill="none">{menuOpen ? <path d="M4 4L18 18M18 4L4 18" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/> : <path d="M3 6h16M3 11h16M3 16h16" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>}</svg>
         </button>
       </div>
       <AnimatePresence>{menuOpen && (
         <motion.div initial={{ opacity: 0, y: -20, scale: 0.96 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, y: -10, scale: 0.96 }}
           transition={{ duration: 0.25, ease: [0.22, 1, 0.36, 1] }}
-          className="absolute top-[calc(100%+16px)] left-4 right-4 md:hidden" style={{ backgroundColor: '#0c0c14' }}>
+          id="mobile-navigation" className="absolute top-[calc(100%+16px)] left-4 right-4 xl:hidden" style={{ backgroundColor: '#0c0c14' }}>
           <div className="border border-railway-border rounded-2xl shadow-2xl shadow-black/80 overflow-hidden" style={{ backgroundColor: '#0f0f1a' }}>
             {/* Header */}
             <div className="px-5 py-4 border-b border-railway-border/50 flex items-center justify-between">
@@ -136,7 +136,7 @@ function Nav({ active, isMuted, onToggleMute }: { active: string; isMuted: boole
             </div>
             {/* Links */}
             <div className="p-3 pb-4 space-y-1">
-              {links.map((l, i) => {
+              {links.map((l) => {
                 const icons: { [key: string]: React.ReactNode } = {
                   Home: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>,
                   "The Layout": <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 21V9"/></svg>,
@@ -147,7 +147,7 @@ function Nav({ active, isMuted, onToggleMute }: { active: string; isMuted: boole
                 };
                 const isActive = active === l.id;
                 return (
-                  <a key={l.label} href={l.page ?? `#${l.id}`} onClick={() => { playNavClick(); setMenuOpen(false); }}
+                  <a key={l.label} aria-current={active === l.id ? "location" : undefined} href={l.page ?? `#${l.id}`} onClick={() => { playNavClick(); setMenuOpen(false); }}
                     className={`flex items-center gap-4 px-4 py-4 rounded-xl transition-all duration-200 group ${isActive ? "bg-railway-accent/15 text-railway-accent" : "text-railway-text hover:bg-white/5"}`}>
                     <div className={`w-10 h-10 rounded-xl flex items-center justify-center transition-all duration-200 ${isActive ? "bg-railway-accent text-railway-bg shadow-lg shadow-railway-accent/30" : "bg-white/5 text-railway-muted group-hover:bg-railway-accent/10 group-hover:text-railway-accent"}`}>
                       {icons[l.label]}
@@ -197,7 +197,7 @@ function Hero({ isMuted }: { isMuted: boolean }) {
           Real railways of Cornwall &amp; Devon, adapted and skewed to fit a baseboard. Built with precision, imagination, and a love for the railways.
         </motion.p>
         <motion.div className="flex flex-wrap justify-center gap-6 mb-12" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.7, delay: 0.9 }}>
-          {[{ label: "Gauge", value: "00 (1:148)" }, { label: "Scale", value: "4mm : 1ft" }, { label: "Control", value: "DCC" }, { label: "Track", value: "Peco Streamline" }].map((item, i) => (
+          {[{ label: "Gauge", value: "00 (1:76)" }, { label: "Scale", value: "4mm : 1ft" }, { label: "Control", value: "DCC" }, { label: "Track", value: "Peco Streamline" }].map((item, i) => (
             <motion.div key={item.label} className="text-center" initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 1 + i * 0.08 }}>
               <p className="text-railway-accent font-bold text-lg">{item.value}</p>
               <p className="text-railway-muted/60 text-[10px] uppercase tracking-widest">{item.label}</p>
@@ -226,28 +226,39 @@ function Hero({ isMuted }: { isMuted: boolean }) {
   );
 }
 
-function ModelViewer3D({ src, onLoad, loaded }: { src: string; onLoad: () => void; loaded: boolean }) {
+function ModelViewer3D({ src, onLoad, onError, loaded }: { src: string; onLoad: () => void; onError: () => void; loaded: boolean }) {
   const ref = useRef<HTMLElement>(null);
   useEffect(() => {
     const el = ref.current;
     if (!el) return;
-    const handler = () => onLoad();
+    let finished = false;
+    const handler = () => { finished = true; onLoad(); };
+    const fail = () => { finished = true; onError(); };
+    const timeout = window.setTimeout(() => { if (!finished) onError(); }, 15000);
     el.addEventListener("load", handler);
-    (el as any).src = src;
-    (el as any).autoRotate = true;
-    (el as any).cameraControls = true;
-    (el as any).shadowIntensity = "0.8";
-    (el as any).environmentImage = "neutral";
-    (el as any).loading = "eager";
-    return () => el.removeEventListener("load", handler);
-  }, [src, onLoad]);
-  // @ts-ignore
+    el.addEventListener("error", fail);
+    el.setAttribute("src", src);
+    el.setAttribute("auto-rotate", "");
+    el.setAttribute("camera-controls", "");
+    el.setAttribute("shadow-intensity", "0.8");
+    el.setAttribute("environment-image", "neutral");
+    el.setAttribute("loading", "eager");
+    return () => {
+      window.clearTimeout(timeout);
+      el.removeEventListener("load", handler);
+      el.removeEventListener("error", fail);
+    };
+  }, [src, onLoad, onError]);
   return <model-viewer ref={ref} alt="Interactive 3D model" className={`w-full h-full transition-opacity duration-700 ${loaded ? "opacity-100" : "opacity-0"}`} />;
 }
 
 function TheLayout() {
   const MODEL_3D_URL = "https://modelviewer.dev/shared-assets/models/NeilArmstrong.glb";
   const [modelLoaded, setModelLoaded] = useState(false);
+  const [modelFailed, setModelFailed] = useState(false);
+  const [modelAttempt, setModelAttempt] = useState(0);
+  const handleModelLoad = useCallback(() => { setModelLoaded(true); setModelFailed(false); }, []);
+  const handleModelError = useCallback(() => setModelFailed(true), []);
   return (
     <section id="layout" className="py-24 px-4">
       <div className="max-w-6xl mx-auto">
@@ -255,7 +266,7 @@ function TheLayout() {
           <h2 className="font-heading text-4xl md:text-5xl font-bold text-railway-text text-center mb-3">The Layout</h2>
           <p className="text-railway-muted text-base text-center mb-16 max-w-xl mx-auto">From paper plan to miniature world — explore every view of the railway</p>
         </Reveal>
-        <div className="grid md:grid-cols-2 gap-8">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
           <Reveal delay={0.1}>
             <div className="card-animated card bg-railway-surface border border-railway-border rounded-2xl overflow-hidden">
               <div className="px-6 pt-6 pb-2 flex items-center justify-between">
@@ -275,13 +286,18 @@ function TheLayout() {
             <div className="card-animated card bg-railway-surface border border-railway-border rounded-2xl overflow-hidden">
               <div className="px-6 pt-6 pb-2 flex items-center justify-between">
                 <div><h3 className="font-heading text-lg font-bold text-railway-text">3D Model</h3><p className="text-railway-muted text-xs mt-0.5">Drag to rotate · Scroll to zoom</p></div>
-                {!modelLoaded && <div className="text-railway-muted/40 text-xs animate-pulse">Loading...</div>}
+                {!modelLoaded && !modelFailed && <div className="text-railway-muted/40 text-xs animate-pulse">Loading...</div>}
               </div>
               <div className="relative mx-4 mb-4 rounded-xl overflow-hidden" style={{ background: "#0d1020", height: "340px" }}>
-                {!modelLoaded && <div className="absolute inset-0 flex items-center justify-center"><div className="text-center"><div className="w-10 h-10 border-2 border-railway-accent/30 border-t-railway-accent rounded-full animate-spin mx-auto mb-3"/><p className="text-railway-muted/50 text-xs">Loading 3D model...</p></div></div>}
-                <ModelViewer3D src={MODEL_3D_URL} onLoad={() => setModelLoaded(true)} loaded={modelLoaded} />
+                {!modelLoaded && !modelFailed && <div className="absolute inset-0 flex items-center justify-center"><div className="text-center"><div className="w-10 h-10 border-2 border-railway-accent/30 border-t-railway-accent rounded-full animate-spin mx-auto mb-3"/><p className="text-railway-muted/50 text-xs">Loading 3D model...</p></div></div>}
+                {modelFailed && <div role="status" className="absolute inset-0 flex flex-col items-center justify-center gap-3 p-6 text-center">
+                  <p className="text-railway-muted text-sm">The demo model couldn&apos;t load. You can still explore the track plan.</p>
+                  <button type="button" className="border border-railway-accent/40 rounded-lg px-4 py-2 text-railway-accent text-sm"
+                    onClick={() => { setModelFailed(false); setModelLoaded(false); setModelAttempt(attempt => attempt + 1); }}>Retry 3D model</button>
+                </div>}
+                <ModelViewer3D key={modelAttempt} src={MODEL_3D_URL} onLoad={handleModelLoad} onError={handleModelError} loaded={modelLoaded} />
               </div>
-              <div className="px-6 pb-5"><p className="text-railway-muted/50 text-xs">Placeholder model · Upload your Fusion 360 .glb to replace</p></div>
+              <div className="px-6 pb-5"><p className="text-railway-muted/50 text-xs">Demo model (astronaut) · Railway model coming soon</p></div>
             </div>
           </Reveal>
         </div>
@@ -348,6 +364,8 @@ function BuildJournal() {
 function RendersGallery() {
   const [lightbox, setLightbox] = useState<string | null>(null);
   const [lightboxAlt, setLightboxAlt] = useState<string | null>(null);
+  const closeLightbox = useCallback(() => setLightbox(null), []);
+  const dialogRef = useDialog(lightbox !== null, closeLightbox);
   return (
     <section id="renders" className="py-24 px-4">
       <div className="max-w-6xl mx-auto">
@@ -358,7 +376,7 @@ function RendersGallery() {
         <div className="grid grid-cols-2 md:grid-cols-3 gap-3 md:gap-4">
           {GALLERY_ITEMS.map((item, i) => (
             <Reveal key={i} delay={i * 0.07}>
-              <motion.div className={`relative overflow-hidden rounded-xl cursor-pointer group ${item.span}`} whileHover={{ scale: 1.03 }}
+              <motion.button type="button" aria-label={`View ${item.alt}`} className={`relative w-full text-left overflow-hidden rounded-xl cursor-pointer group ${item.span}`} whileHover={{ scale: 1.03 }}
                 onClick={() => { setLightbox(item.src); setLightboxAlt(item.alt); }}>
                 <div className="relative" style={{ aspectRatio: item.span ? "2/1" : "4/3" }}>
                   <Image src={item.src} alt={item.alt} fill className="object-cover transition-transform duration-500 group-hover:scale-110"
@@ -367,20 +385,20 @@ function RendersGallery() {
                     <p className="text-white text-xs font-medium">{item.alt}</p>
                   </div>
                 </div>
-              </motion.div>
+              </motion.button>
             </Reveal>
           ))}
         </div>
         <AnimatePresence>
           {lightbox && (
-            <motion.div className="fixed inset-0 z-50 bg-black/90 flex items-center justify-center p-4 backdrop-blur-sm" style={{ backdropFilter: "blur(12px)" }}
+            <motion.div ref={dialogRef} role="dialog" aria-modal="true" aria-label={lightboxAlt ?? "Image preview"} tabIndex={-1} className="fixed inset-0 z-[10000] bg-black/90 flex items-center justify-center p-4 backdrop-blur-sm" style={{ backdropFilter: "blur(12px)" }}
               initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setLightbox(null)}>
               <motion.div className="relative max-w-5xl w-full" initial={{ scale: 0.85, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.9, opacity: 0 }}
                 transition={{ type: "spring", stiffness: 300, damping: 25 }} onClick={(e) => e.stopPropagation()}>
                 <div className="relative aspect-video rounded-xl overflow-hidden"><Image src={lightbox} alt={lightboxAlt || ""} fill className="object-contain" sizes="100vw" priority/></div>
                 {lightboxAlt && <p className="text-railway-muted text-sm text-center mt-3">{lightboxAlt}</p>}
               </motion.div>
-              <button className="absolute top-4 right-4 text-white/70 hover:text-white text-4xl font-light transition-colors" onClick={() => setLightbox(null)}>×</button>
+              <button aria-label="Close image preview" className="absolute top-4 right-4 min-h-11 min-w-11 text-white/70 hover:text-white text-4xl font-light transition-colors" onClick={() => setLightbox(null)}>×</button>
             </motion.div>
           )}
         </AnimatePresence>
@@ -394,7 +412,7 @@ const SOFTWARE = [
   { name: "Fusion 360", desc: "3D CAD modelling for structures, vehicles, and detailed components — the backbone of the design process", iconPath: "M3 8l4 4 8-8 4 4-8 8-4-4" },
   { name: "Swiftly S/B", desc: "Planning and design tool for track layouts, scenic elements, and operational planning", iconPath: "M7 10h14M7 14h10M7 18h12" },
 ];
-const HARDWARE = [{ label: "Gauge", value: "00", sub: "1:148" }, { label: "Scale", value: "4mm", sub: "per foot" }, { label: "Control", value: "DCC", sub: "Digital" }, { label: "Track", value: "Peco", sub: "Streamline" }];
+const HARDWARE = [{ label: "Gauge", value: "00", sub: "1:76" }, { label: "Scale", value: "4mm", sub: "per foot" }, { label: "Control", value: "DCC", sub: "Digital" }, { label: "Track", value: "Peco", sub: "Streamline" }];
 
 function SoftwareSection() {
   return (
@@ -404,7 +422,7 @@ function SoftwareSection() {
           <h2 className="font-heading text-4xl md:text-5xl font-bold text-railway-text text-center mb-3">Software &amp; Hardware</h2>
           <p className="text-railway-muted text-base text-center mb-16">The tools and materials powering the build</p>
         </Reveal>
-        <div className="grid md:grid-cols-2 gap-8">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
           <div>
             <Reveal delay={0.1}><h3 className="font-heading text-sm font-bold text-railway-accent uppercase tracking-widest mb-4">Software</h3></Reveal>
             <div className="space-y-3">
@@ -475,20 +493,8 @@ function Footer() {
 
 export default function Home() {
   const [activeSection, setActiveSection] = useState("home");
-  const { isMuted, setIsMuted, hasDecided } = useSound();
-  const [showConsent, setShowConsent] = useState(false);
-  const playPageSound = () => {
-    if (!isMuted) {
-      const audio = new Audio("/sounds/page-load.mp3");
-      audio.volume = 0.2; audio.play().catch(() => {});
-    }
-  };
+  const { isMuted, setIsMuted } = useSound();
   useEffect(() => {
-    if (!hasDecided) {
-      setShowConsent(true);
-    } else {
-      playPageSound();
-    }
     const observer = new IntersectionObserver(
       (entries) => { entries.forEach((entry) => { if (entry.isIntersecting) setActiveSection(entry.target.id); }); },
       { threshold: 0.25, rootMargin: "-100px 0px -55% 0px" }
@@ -497,15 +503,8 @@ export default function Home() {
     return () => observer.disconnect();
   }, []);
 
-  const handleConsentPlay = () => {
-    setShowConsent(false);
-    setIsMuted(false);
-    playPageSound();
-  };
-
   return (
     <main className="relative z-10">
-      {showConsent && <SoundConsentModal onPlaySounds={handleConsentPlay} />}
       <InteractiveTrain />
       <Nav active={activeSection} isMuted={isMuted} onToggleMute={() => setIsMuted(!isMuted)} />
       <Hero isMuted={isMuted} />

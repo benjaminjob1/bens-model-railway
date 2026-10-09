@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useCallback } from "react";
+import { useDialog } from "@/lib/useDialog";
 import { motion, AnimatePresence } from "framer-motion";
 import { useSound } from "@/context/SoundContext";
 
@@ -9,7 +10,9 @@ interface SoundConsentModalProps {
 }
 
 export default function SoundConsentModal({ onPlaySounds }: SoundConsentModalProps) {
-  const { isMuted, setIsMuted } = useSound();
+  const { setIsMuted } = useSound();
+  const close = useCallback(() => setIsMuted(true), [setIsMuted]);
+  const dialogRef = useDialog(true, close);
 
   return (
     <AnimatePresence>
@@ -21,6 +24,8 @@ export default function SoundConsentModal({ onPlaySounds }: SoundConsentModalPro
         exit={{ opacity: 0 }}
       >
         <motion.div
+          ref={dialogRef}
+          role="dialog" aria-modal="true" aria-labelledby="sound-consent-title" tabIndex={-1}
           className="w-full max-w-sm bg-railway-surface border border-railway-border rounded-2xl shadow-2xl overflow-hidden"
           initial={{ scale: 0.88, opacity: 0, y: 20 }}
           animate={{ scale: 1, opacity: 1, y: 0 }}
@@ -37,7 +42,7 @@ export default function SoundConsentModal({ onPlaySounds }: SoundConsentModalPro
               </svg>
             </div>
             <div>
-              <h2 className="font-heading text-lg font-bold text-railway-text">Sound Effects</h2>
+              <h2 id="sound-consent-title" className="font-heading text-lg font-bold text-railway-text">Sound Effects</h2>
               <p className="text-railway-muted text-xs mt-0.5 leading-relaxed">This site plays railway sounds — station bells, whistles, and clicks.</p>
             </div>
           </div>

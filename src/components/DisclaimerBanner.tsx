@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useEffect, useRef } from "react";
+import { useHydrated, usePreference, writePreference } from "@/lib/preferences";
 import { motion, AnimatePresence } from "framer-motion";
 
 const BANNER_HEIGHT = 48;
@@ -8,31 +9,29 @@ const BANNER_HEIGHT = 48;
 export { BANNER_HEIGHT };
 
 export default function DisclaimerBanner() {
-  const [visible, setVisible] = useState(false);
-  const [mounted, setMounted] = useState(false);
-
+  const bannerRef = useRef<HTMLDivElement>(null);
+  const dismissed = usePreference("railway-disclaimer-dismissed");
+  const mounted = useHydrated();
+  const visible = mounted && !dismissed;
   useEffect(() => {
-    setMounted(true);
-    const dismissed = localStorage.getItem("railway-disclaimer-dismissed");
-    if (!dismissed) setVisible(true);
-    document.documentElement.style.setProperty("--banner-h", dismissed ? "0px" : "48px");
-  }, []);
-
-  const handleDismiss = () => {
-    setVisible(false);
-    localStorage.setItem("railway-disclaimer-dismissed", "1");
-    document.documentElement.style.setProperty("--banner-h", "0px");
-  };
-
-  // Don't render until mounted to avoid hydration mismatch
-  if (!mounted) return <div style={{ height: `${BANNER_HEIGHT}px` }} />;
+    const banner = bannerRef.current;
+    const measure = () => document.documentElement.style.setProperty("--banner-h", visible && banner ? `${banner.getBoundingClientRect().height}px` : "0px");
+    measure();
+    if (!banner) return;
+    const observer = new ResizeObserver(measure);
+    observer.observe(banner);
+    return () => observer.disconnect();
+  }, [visible]);
+  const handleDismiss = () => writePreference("railway-disclaimer-dismissed", "1");
 
   return (
     <>
-      {/* Fixed banner at the very top of the viewport */}
+      {/* Fixed overlay at the very top of the viewport. It never reserves flow space,
+          so page content doesn't jump when it appears or is dismissed; only fixed/sticky
+          navs read --banner-h to sit below it. */}
       <AnimatePresence>
         {visible && (
-          <motion.div
+          <motion.div ref={bannerRef}
             initial={{ y: -BANNER_HEIGHT, opacity: 0 }}
             animate={{ y: 0, opacity: 1 }}
             exit={{ y: -BANNER_HEIGHT, opacity: 0 }}
@@ -43,11 +42,11 @@ export default function DisclaimerBanner() {
               left: 0,
               right: 0,
               zIndex: 9999,
-              height: `${BANNER_HEIGHT}px`,
+              minHeight: `${BANNER_HEIGHT}px`,
             }}
           >
             <div
-              className="h-full border-b border-amber-700/50 px-4 flex items-center"
+              className="min-h-12 py-1 border-b border-amber-700/50 px-4 flex items-center"
               style={{
                 background:
                   "linear-gradient(135deg, rgba(217,162,43,0.14) 0%, rgba(180,120,20,0.09) 100%)",
@@ -63,7 +62,7 @@ export default function DisclaimerBanner() {
                 </div>
                 <button
                   onClick={handleDismiss}
-                  className="text-amber-400/60 hover:text-amber-200 transition-colors flex-shrink-0"
+                  className="p-2 min-h-11 min-w-11 flex items-center justify-center text-amber-400/60 hover:text-amber-200 transition-colors flex-shrink-0"
                   aria-label="Dismiss disclaimer"
                 >
                   <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
