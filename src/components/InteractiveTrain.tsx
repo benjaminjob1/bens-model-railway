@@ -305,7 +305,7 @@ const ORIGINAL_LAYOUT = {
 // COMPONENT
 // ──────────────────────────────────────────────
 interface InteractiveTrainProps {
-  /** Hide the Layout / Random selector — use for decorative background mode */
+  /** Hide the Train controls — use for decorative background mode */
   showControls?: boolean;
 }
 
@@ -350,8 +350,23 @@ export default function InteractiveTrain({ showControls = true }: InteractiveTra
   const ambientRef = useRef<HTMLAudioElement | null>(null);
   const hasInteractedRef = useRef(false);
 
-  const { isMuted } = useSound();
+  const { isMuted, setIsMuted } = useSound();
   const isMutedRef = useRef(isMuted);
+  // Train controls: kept in refs too so the animation loop reads them without restarting the layout
+  const [panelOpen, setPanelOpen] = useState(false);
+  const [paused, setPaused] = useState(false);
+  const [speed, setSpeed] = useState(1);
+  const pausedRef = useRef(false);
+  const speedRef = useRef(1);
+  const panelToggleRef = useRef<HTMLButtonElement>(null);
+  const togglePaused = useCallback(() => {
+    const next = !pausedRef.current;
+    pausedRef.current = next;
+    setPaused(next);
+    if (next) ambientRef.current?.pause();
+  }, []);
+  const changeSpeed = useCallback((value: number) => { speedRef.current = value; setSpeed(value); }, []);
+  const closePanel = useCallback(() => { setPanelOpen(false); panelToggleRef.current?.focus(); }, []);
   const toggleSignal = useCallback((id: string) => {
     if (!isMutedRef.current) {
       const s = new Audio("/sounds/train-move.mp3");
@@ -379,7 +394,7 @@ export default function InteractiveTrain({ showControls = true }: InteractiveTra
   useEffect(() => {
     if (typeof window === 'undefined') return;
     const handleGesture = (e: Event) => {
-      if (isMutedRef.current || e.timeStamp <= unmutedAtRef.current) return;
+      if (isMutedRef.current || pausedRef.current || e.timeStamp <= unmutedAtRef.current) return;
       let a = ambientRef.current;
       if (!a) {
         a = new Audio('/sounds/train-move.mp3');
@@ -490,7 +505,7 @@ export default function InteractiveTrain({ showControls = true }: InteractiveTra
     if (typeof window === "undefined") return;
 
     const doAutoWhistle = () => {
-      if (isMutedRef.current || !hasInteractedRef.current || document.hidden) return;
+      if (isMutedRef.current || pausedRef.current || !hasInteractedRef.current || document.hidden) return;
       const rad = (trainAngleRef.current[0] * Math.PI) / 180;
       const aheadDist = 22, smokeRise = 20;
       const px = trainPosRef.current[0].x + Math.cos(rad) * aheadDist;
@@ -595,9 +610,9 @@ export default function InteractiveTrain({ showControls = true }: InteractiveTra
     const animate = (timestamp = 0) => {
       const frameScale = previousFrame ? Math.min(timestamp - previousFrame, 64) / (1000 / 60) : 1;
       previousFrame = timestamp;
-      if (!isDragging) {
+      if (!isDragging && !pausedRef.current) {
         for (let i = 0; i < progress.current.length; i++) {
-          const speed = reducedMotion ? 0 : (0.00018 + i * 0.00007) * frameScale; // slightly different speeds so trains spread out
+          const speed = reducedMotion ? 0 : (0.00018 + i * 0.00007) * frameScale * speedRef.current; // slightly different speeds so trains spread out
           const prev = progress.current[i];
           progress.current[i] = (progress.current[i] + speed) % 1;
           const isRev = progress.current[i] < prev;
@@ -776,8 +791,13 @@ export default function InteractiveTrain({ showControls = true }: InteractiveTra
           z-index: 9990;
           display: flex;
           flex-direction: column;
-          gap: 4px;
+          gap: 8px;
           padding: 6px;
+          max-width: calc(100vw - 32px);
+          max-height: calc(100dvh - 140px);
+          overflow-y: auto;
+          color: rgba(212, 168, 67, 0.75);
+          font-size: 11px;
           background: rgba(10, 13, 21, 0.9);
           backdrop-filter: blur(12px);
           border: 1px solid rgba(212, 168, 67, 0.25);
@@ -804,9 +824,21 @@ export default function InteractiveTrain({ showControls = true }: InteractiveTra
           color: #d4a843;
           box-shadow: inset 0 1px 0 rgba(255,255,255,0.1), 0 0 12px rgba(212, 168, 67, 0.2);
         }
-        .track-mode-btn:hover:not(.active) {
+        .track-mode-btn:hover:not(.active):not(:disabled) {
           color: rgba(212, 168, 67, 0.9);
           background: rgba(212, 168, 67, 0.08);
+        }
+        .track-mode-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+        .track-mode-selector button:focus-visible, .track-mode-selector input:focus-visible {
+          outline: 2px solid #d4a843;
+          outline-offset: 2px;
+        }
+        .train-controls-row { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; padding: 0 6px; }
+        .train-controls-title { font-weight: 700; letter-spacing: 0.05em; text-transform: uppercase; color: #d4a843; flex: 1; }
+        .train-controls-note { padding: 0 6px; max-width: 320px; color: rgba(212, 168, 67, 0.6); }
+        .train-controls-speed { accent-color: #d4a843; width: 110px; }
+        @media (max-width: 640px) {
+          .track-mode-selector { bottom: 16px; right: 16px; }
         }
         .station-label {
           position: absolute;
@@ -820,23 +852,64 @@ export default function InteractiveTrain({ showControls = true }: InteractiveTra
         }
       `}</style>
 
-      {/* Track mode selector — hidden when used as decorative background */}
+      {/* Train controls — hidden when used as decorative background */}
       {showControls && (
-      <div className="track-mode-selector">
-        <button 
-          aria-pressed={trackMode === 'default'}
-          className={`track-mode-btn default ${trackMode === 'default' ? 'active' : ''}`}
-          onClick={() => handleModeChange('default')}
-        >
-          Layout
-        </button>
-        <button 
-          aria-pressed={trackMode === 'random'}
-          className={`track-mode-btn random ${trackMode === 'random' ? 'active' : ''}`}
-          onClick={() => handleModeChange('random')}
-        >
-          Random
-        </button>
+      <div className="track-mode-selector"
+        onKeyDown={e => { if (e.key === 'Escape' && panelOpen) closePanel(); }}>
+        {!panelOpen ? (
+          <button ref={panelToggleRef} type="button" className="track-mode-btn default active"
+            aria-expanded={false} aria-controls="train-controls-panel" onClick={() => setPanelOpen(true)}>
+            Train controls{paused ? ' · Paused' : ''}
+          </button>
+        ) : (
+          <div id="train-controls-panel" role="group" aria-labelledby="train-controls-title" style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+            <div className="train-controls-row">
+              <span id="train-controls-title" className="train-controls-title">Train controls</span>
+              <button type="button" className="track-mode-btn default" autoFocus aria-expanded={true}
+                aria-controls="train-controls-panel" onClick={closePanel}>
+                Close
+              </button>
+            </div>
+            <div className="train-controls-row">
+              <button type="button" className={`track-mode-btn default ${paused ? 'active' : ''}`}
+                aria-pressed={paused} disabled={!!reducedMotion} onClick={togglePaused}>
+                {paused ? 'Run trains' : 'Pause trains'}
+              </button>
+              <label htmlFor="train-speed">Speed</label>
+              <input id="train-speed" type="range" className="train-controls-speed"
+                min={0.5} max={2} step={0.25} value={speed} disabled={!!reducedMotion}
+                aria-valuetext={`${speed}×`} onChange={e => changeSpeed(Number(e.target.value))} />
+              <span aria-hidden="true">{speed}×</span>
+            </div>
+            {reducedMotion && (
+              <p className="train-controls-note">Trains are still and speed is disabled because your device is set to reduce motion.</p>
+            )}
+            <div className="train-controls-row">
+              <button type="button" className={`track-mode-btn default ${!isMuted ? 'active' : ''}`}
+                aria-pressed={!isMuted} onClick={() => setIsMuted(!isMuted)}>
+                {isMuted ? 'Sound: muted' : 'Sound: on'}
+              </button>
+              <span>Track</span>
+              <button type="button"
+                aria-pressed={trackMode === 'default'}
+                className={`track-mode-btn default ${trackMode === 'default' ? 'active' : ''}`}
+                onClick={() => handleModeChange('default')}
+              >
+                Layout
+              </button>
+              <button type="button"
+                aria-pressed={trackMode === 'random'}
+                className={`track-mode-btn random ${trackMode === 'random' ? 'active' : ''}`}
+                onClick={() => handleModeChange('random')}
+              >
+                Random
+              </button>
+            </div>
+            <p className="train-controls-note" aria-live="polite">
+              Signals: {signalPositions.map((sig, i) => `S${i + 1} ${activeSignals.has(sig.id) ? 'Proceed' : 'Stop'}`).join(' · ')}
+            </p>
+          </div>
+        )}
       </div>
       )}
 
@@ -923,7 +996,7 @@ export default function InteractiveTrain({ showControls = true }: InteractiveTra
             ))}
 
             {/* Signal visuals (visual only — interactions via HTML buttons below) */}
-            {signalPositions.map(sig => {
+            {signalPositions.map((sig, i) => {
               const active = activeSignals.has(sig.id);
               return (
                 <g key={`sig-vis-${sig.id}`}>
@@ -931,6 +1004,9 @@ export default function InteractiveTrain({ showControls = true }: InteractiveTra
                   <circle cx={sig.x} cy={sig.y} r="9" fill={active ? '#22c55e' : '#ef4444'} opacity={active ? 1 : 0.85}
                     style={{ filter: active ? 'drop-shadow(0 0 7px #22c55e)' : 'drop-shadow(0 0 5px #ef4444)' }} pointerEvents="none" />
                   {active && <circle cx={sig.x} cy={sig.y} r="14" fill="none" stroke="#22c55e" strokeWidth="2" opacity="0.4" pointerEvents="none" />}
+                  <text x={sig.x + 14} y={sig.y + 3} fill={active ? '#22c55e' : '#ef4444'} fontSize="8" fontFamily="'Courier New', monospace" fontWeight="bold" pointerEvents="none">
+                    {`S${i + 1} ${active ? 'Proceed' : 'Stop'}`}
+                  </text>
                 </g>
               );
             })}
