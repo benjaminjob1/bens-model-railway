@@ -363,45 +363,49 @@ export default function InteractiveTrain({ showControls = true }: InteractiveTra
       return next;
     });
   }, []);
+  const unmutedAtRef = useRef(0);
   useEffect(() => {
     isMutedRef.current = isMuted;
-    if (ambientRef.current) {
-      ambientRef.current.muted = isMuted;
-      if (isMuted) ambientRef.current.pause();
-      else if (hasInteractedRef.current) ambientRef.current.play().catch(() => {});
+    if (isMuted) {
+      if (ambientRef.current) { ambientRef.current.muted = true; ambientRef.current.pause(); }
+    } else {
+      // Don't replay anything on the unmute itself; the next user gesture starts ambient audio.
+      unmutedAtRef.current = performance.now();
     }
   }, [isMuted]);
 
-  // Start ambient loop + trigger first smoke+whistle on first user interaction (unlocks audio context)
+  // Start (or resume) the ambient loop on a user gesture so browsers allow playback, and
+  // trigger the first smoke + whistle on the very first interaction.
   useEffect(() => {
     if (typeof window === 'undefined') return;
-    const handleFirstInteraction = () => {
-      if (hasInteractedRef.current || isMutedRef.current) return;
-      hasInteractedRef.current = true;
-      // Start ambient loop
-      const a = new Audio('/sounds/train-move.mp3');
-      a.loop = true;
-      a.volume = 0.12;
-      a.play().catch(() => {});
-      ambientRef.current = a;
-      // Trigger first smoke + whistle immediately on first click
-      if (!isMutedRef.current) {
-        const rad = (trainAngleRef.current[0] * Math.PI) / 180;
-        const px = trainPosRef.current[0].x + Math.cos(rad) * 22;
-        const py = trainPosRef.current[0].y + Math.sin(rad) * 22 - 20;
-        const newParts: Array<{ id: number; x: number; y: number; age: number }> = [];
-        for (let i = 0; i < 10; i++) newParts.push({ id: ++smokeId.current, x: px, y: py, age: 0 });
-        setSmokeParticles(prev => [...prev, ...newParts]);
-        const w = new Audio('/sounds/cta-whistle.mp3');
-        w.volume = 0.08;
-        w.play().catch(() => {});
+    const handleGesture = (e: Event) => {
+      if (isMutedRef.current || e.timeStamp <= unmutedAtRef.current) return;
+      let a = ambientRef.current;
+      if (!a) {
+        a = new Audio('/sounds/train-move.mp3');
+        a.loop = true;
+        a.volume = 0.12;
+        ambientRef.current = a;
       }
+      a.muted = false;
+      if (a.paused) a.play().catch(() => {});
+      if (hasInteractedRef.current) return;
+      hasInteractedRef.current = true;
+      const rad = (trainAngleRef.current[0] * Math.PI) / 180;
+      const px = trainPosRef.current[0].x + Math.cos(rad) * 22;
+      const py = trainPosRef.current[0].y + Math.sin(rad) * 22 - 20;
+      const newParts: Array<{ id: number; x: number; y: number; age: number }> = [];
+      for (let i = 0; i < 10; i++) newParts.push({ id: ++smokeId.current, x: px, y: py, age: 0 });
+      setSmokeParticles(prev => [...prev, ...newParts]);
+      const w = new Audio('/sounds/cta-whistle.mp3');
+      w.volume = 0.08;
+      w.play().catch(() => {});
     };
-    window.addEventListener('click', handleFirstInteraction);
-    window.addEventListener('touchstart', handleFirstInteraction);
+    // touchend/click/keydown count as user activation (touchstart does not on iOS).
+    const events = ['click', 'touchend', 'keydown'] as const;
+    events.forEach(ev => window.addEventListener(ev, handleGesture));
     return () => {
-      window.removeEventListener('click', handleFirstInteraction);
-      window.removeEventListener('touchstart', handleFirstInteraction);
+      events.forEach(ev => window.removeEventListener(ev, handleGesture));
       ambientRef.current?.pause();
       ambientRef.current = null;
       hasInteractedRef.current = false;
