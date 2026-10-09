@@ -21,22 +21,29 @@ export function useTrainWhistle() {
   };
 }
 
+// Returns a function to call on an actual departure event. Unmuting never replays it;
+// muting stops a departure that is still playing.
 export function useDepartureSound() {
   const { isMuted } = useSound();
   const ref = useRef<HTMLAudioElement | null>(null);
   useEffect(() => {
-    ref.current = new Audio(DEPARTURE_URL);
-    ref.current.volume = 0.2;
+    const el = new Audio(DEPARTURE_URL);
+    el.volume = 0.2;
+    ref.current = el;
+    return () => { el.pause(); ref.current = null; };
   }, []);
   useEffect(() => {
-    const el = ref.current;
-    if (!el || isMuted) return;
-    el.play().catch(() => {});
-    return () => {
-      el.pause();
-      el.currentTime = 0;
-    };
+    if (isMuted && ref.current) {
+      ref.current.pause();
+      ref.current.currentTime = 0;
+    }
   }, [isMuted]);
+  return () => {
+    if (!isMuted && ref.current) {
+      ref.current.currentTime = 0;
+      ref.current.play().catch(() => {});
+    }
+  };
 }
 
 // Wrap a child element to play train whistle on click
