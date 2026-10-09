@@ -1,11 +1,26 @@
 "use client";
 
-import { useEffect, useRef, useState, useMemo, useCallback } from "react";
+import { useEffect, useRef, useState, useMemo, useCallback, useSyncExternalStore } from "react";
 import { useReducedMotion } from "framer-motion";
 import { createPortal } from "react-dom";
 import { useHydrated, usePreference, writePreference } from "@/lib/preferences";
 import { mirrorTrackPath } from "@/lib/trackGeometry";
 import { useSound } from "@/context/SoundContext";
+import {
+  anyTrainMoving, effectiveSpeed, frameScaleFor, freshTrains, isTrainMoving, locateOnRoute,
+  pauseAll, progressForRoutePoint, routeLength, runAll, setTrainSpeed, stepProgress, toggleTrain,
+  type Route, type TrainControlState,
+} from "@/lib/trainMotion";
+
+interface TrainView { x: number; y: number; angle: number; flipY: number }
+
+const subscribeNoop = () => () => {};
+const leadOf = (list: TrainView[]): TrainView => list[0] ?? { x: 0, y: 0, angle: 0, flipY: 1 };
+// Smoke and whistles come from a train that is actually moving, never from a paused one.
+const movingLeadOf = (list: TrainView[], state: TrainControlState): TrainView | null => {
+  const i = list.findIndex((_, idx) => isTrainMoving(state, idx));
+  return i >= 0 ? list[i] : null;
+};
 
 // ============================================
 // REAL 00 GAUGE (4mm/ft) TRACK SPECIFICATIONS
@@ -305,7 +320,7 @@ const ORIGINAL_LAYOUT = {
 // COMPONENT
 // ──────────────────────────────────────────────
 interface InteractiveTrainProps {
-  /** Hide the Layout / Random selector — use for decorative background mode */
+  /** Hide the Train controls — use for decorative background mode */
   showControls?: boolean;
 }
 
@@ -320,7 +335,7 @@ function seededRandom(seed: number) {
 export default function InteractiveTrain({ showControls = true }: InteractiveTrainProps) {
   const trainRef = useRef<HTMLDivElement>(null);
   const mainPathRef = useRef<SVGPathElement>(null);
-  const branchPathRef = useRef<SVGPathElement>(null);
+  const branchPathsRef = useRef<Array<SVGPathElement | null>>([]);
   const svgRef = useRef<SVGSVGElement>(null);
   
   const hydrated = useHydrated();
@@ -329,29 +344,44 @@ export default function InteractiveTrain({ showControls = true }: InteractiveTra
   const trackMode = storedMode === 'random' ? 'random' : 'default';
   // Changes each time Random is clicked → re-randomizes signals, layout, train start positions
   const [randomTick, setRandomTick] = useState(0);
-  const [trainPos, setTrainPos] = useState<{x:number,y:number}[]>([{ x: 0, y: 0 }]);
+  // One entry per train on the current layout. Rebuilt whole every frame, so a layout with
+  // fewer trains never leaves stale locomotives frozen on screen.
+  const [trains, setTrains] = useState<TrainView[]>([]);
   const [visible, setVisible] = useState(false);
   const [trail, setTrail] = useState<Array<{ x: number; y: number; id: number }>>([]);
-  const [isDragging, setIsDragging] = useState(false);
-  const [trainAngle, setTrainAngle] = useState<number[]>([0]);
-  const [trainScaleX, setTrainScaleX] = useState<number[]>([1]);
-  const [trainScaleY, setTrainScaleY] = useState<number[]>([1]);
+  const [dragIndex, setDragIndex] = useState<number | null>(null);
+  const dragIndexRef = useRef<number | null>(null);
   // Auto-whistle refs: interval starts at 30s, increases each trigger up to 30min
   const autoIntervalRef = useRef(10000); // ms — starts at 10s after first interaction
   const autoTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
-  // Keep refs in sync with state so interval can read current values
-  const trainAngleRef = useRef<number[]>([0]);
-  const trainPosRef = useRef<{x:number,y:number}[]>([{ x: 0, y: 0 }]);
-  useEffect(() => { trainAngleRef.current = trainAngle; }, [trainAngle]);
-  useEffect(() => { trainPosRef.current = trainPos; }, [trainPos]);
+  // Kept in a ref so timers and the animation loop read the latest positions without restarting
+  const trainsRef = useRef<TrainView[]>([]);
+  useEffect(() => { trainsRef.current = trains; }, [trains]);
   const [smokeParticles, setSmokeParticles] = useState<Array<{ id: number; x: number; y: number; age: number }>>([]);
   const [activeSignals, setActiveSignals] = useState<Set<string>>(new Set());
   const smokeId = useRef(0);
   const ambientRef = useRef<HTMLAudioElement | null>(null);
   const hasInteractedRef = useRef(false);
 
-  const { isMuted } = useSound();
+  const { isMuted, setIsMuted } = useSound();
   const isMutedRef = useRef(isMuted);
+  // Train control values for the animation loop and timers (see "Train controls" below)
+  const controlsRef = useRef<TrainControlState>({ allPaused: false, trains: [] });
+  const globalSpeedRef = useRef(1);
+  const anyMovingRef = useRef(true);
+  const [panelOpen, setPanelOpen] = useState(false);
+  const panelToggleRef = useRef<HTMLButtonElement>(null);
+  const closePanel = useCallback(() => { setPanelOpen(false); panelToggleRef.current?.focus(); }, []);
+  // Escape closes the panel wherever focus is, not only while it sits inside the panel.
+  useEffect(() => {
+    if (!panelOpen) return;
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') closePanel(); };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [panelOpen, closePanel]);
+  // The pages put an empty slot in their nav bar; the controls render there so they never float over content.
+  const navSlot = useSyncExternalStore(subscribeNoop,
+    () => document.getElementById('train-controls-slot'), () => null);
   const toggleSignal = useCallback((id: string) => {
     if (!isMutedRef.current) {
       const s = new Audio("/sounds/train-move.mp3");
@@ -364,6 +394,19 @@ export default function InteractiveTrain({ showControls = true }: InteractiveTra
     });
   }, []);
   const unmutedAtRef = useRef(0);
+  // Starts/resumes the ambient loop. Must be called from inside a user gesture.
+  const startAmbient = useCallback(() => {
+    if (isMutedRef.current) return;
+    let a = ambientRef.current;
+    if (!a) {
+      a = new Audio('/sounds/train-move.mp3');
+      a.loop = true;
+      a.volume = 0.12;
+      ambientRef.current = a;
+    }
+    a.muted = false;
+    if (a.paused) a.play().catch(() => {});
+  }, []);
   useEffect(() => {
     isMutedRef.current = isMuted;
     if (isMuted) {
@@ -379,21 +422,14 @@ export default function InteractiveTrain({ showControls = true }: InteractiveTra
   useEffect(() => {
     if (typeof window === 'undefined') return;
     const handleGesture = (e: Event) => {
-      if (isMutedRef.current || e.timeStamp <= unmutedAtRef.current) return;
-      let a = ambientRef.current;
-      if (!a) {
-        a = new Audio('/sounds/train-move.mp3');
-        a.loop = true;
-        a.volume = 0.12;
-        ambientRef.current = a;
-      }
-      a.muted = false;
-      if (a.paused) a.play().catch(() => {});
+      if (isMutedRef.current || !anyMovingRef.current || e.timeStamp <= unmutedAtRef.current) return;
+      startAmbient();
       if (hasInteractedRef.current) return;
       hasInteractedRef.current = true;
-      const rad = (trainAngleRef.current[0] * Math.PI) / 180;
-      const px = trainPosRef.current[0].x + Math.cos(rad) * 22;
-      const py = trainPosRef.current[0].y + Math.sin(rad) * 22 - 20;
+      const lead = movingLeadOf(trainsRef.current, controlsRef.current) ?? leadOf(trainsRef.current);
+      const rad = (lead.angle * Math.PI) / 180;
+      const px = lead.x + Math.cos(rad) * 22;
+      const py = lead.y + Math.sin(rad) * 22 - 20;
       const newParts: Array<{ id: number; x: number; y: number; age: number }> = [];
       for (let i = 0; i < 10; i++) newParts.push({ id: ++smokeId.current, x: px, y: py, age: 0 });
       setSmokeParticles(prev => [...prev, ...newParts]);
@@ -410,7 +446,7 @@ export default function InteractiveTrain({ showControls = true }: InteractiveTra
       ambientRef.current = null;
       hasInteractedRef.current = false;
     };
-  }, []);
+  }, [startAmbient]);
 
   // Signal positions: fixed in default, random each time Random is clicked
   const signalPositions = useMemo(() => {
@@ -463,12 +499,40 @@ export default function InteractiveTrain({ showControls = true }: InteractiveTra
       trackMode === 'default' ? (i === 0 ? 0.1 : 0.6) : random()
     );
   }, [numTrains, trackMode, randomTick]);
+  // Train controls. Settings belong to the current layout: Random starts its new trains
+  // running at 1×, while "Pause all" carries over. Mirrored into refs so the animation loop
+  // reads them without restarting or regenerating the layout.
+  const layoutKey = `${trackMode}:${trackMode === 'random' ? randomTick : 0}:${numTrains}`;
+  const [controls, setControls] = useState<TrainControlState & { key: string }>(
+    () => ({ key: '', allPaused: false, trains: [] }));
+  const controlState = useMemo<TrainControlState>(() => controls.key === layoutKey
+    ? controls : { allPaused: controls.allPaused, trains: freshTrains(numTrains) }, [controls, layoutKey, numTrains]);
+  const [globalSpeed, setGlobalSpeed] = useState(1);
+  const anyMoving = anyTrainMoving(controlState);
+  const allStopped = !anyMoving;
+  useEffect(() => {
+    controlsRef.current = controlState;
+    anyMovingRef.current = anyTrainMoving(controlState);
+    if (!anyMovingRef.current) ambientRef.current?.pause();
+  }, [controlState]);
+  const updateControls = useCallback((change: (state: TrainControlState) => TrainControlState) => {
+    setControls(prev => {
+      const base = prev.key === layoutKey ? prev : { allPaused: prev.allPaused, trains: freshTrains(numTrains) };
+      return { key: layoutKey, ...change(base) };
+    });
+  }, [layoutKey, numTrains]);
+  const changeGlobalSpeed = useCallback((value: number) => { globalSpeedRef.current = value; setGlobalSpeed(value); }, []);
+  // Pause the SVG rail-flow animation with the trains so nothing appears to keep moving.
+  useEffect(() => {
+    const svg = svgRef.current;
+    if (!svg || typeof svg.pauseAnimations !== 'function') return;
+    if (allStopped) svg.pauseAnimations(); else svg.unpauseAnimations();
+  }, [allStopped]);
+
   const animFrame = useRef<number>(0);
   const trailId = useRef(0);
   const lastTrailTime = useRef(0);
-  const pathLength = useRef(0);
-  const branchLength = useRef(0);
-  const totalLength = useRef(0);
+  const svgRectRef = useRef({ left: 0, top: 0, width: 800, height: 400 });
   
   const randomLayout = useMemo(() => genLayout(randomTick + 1), [randomTick]);
   
@@ -491,10 +555,12 @@ export default function InteractiveTrain({ showControls = true }: InteractiveTra
 
     const doAutoWhistle = () => {
       if (isMutedRef.current || !hasInteractedRef.current || document.hidden) return;
-      const rad = (trainAngleRef.current[0] * Math.PI) / 180;
+      const lead = movingLeadOf(trainsRef.current, controlsRef.current);
+      if (!lead) return;
+      const rad = (lead.angle * Math.PI) / 180;
       const aheadDist = 22, smokeRise = 20;
-      const px = trainPosRef.current[0].x + Math.cos(rad) * aheadDist;
-      const py = trainPosRef.current[0].y + Math.sin(rad) * aheadDist - smokeRise;
+      const px = lead.x + Math.cos(rad) * aheadDist;
+      const py = lead.y + Math.sin(rad) * aheadDist - smokeRise;
       const newParts: Array<{ id: number; x: number; y: number; age: number }> = [];
       for (let i = 0; i < 10; i++) newParts.push({ id: ++smokeId.current, x: px, y: py, age: 0 });
       setSmokeParticles(prev => [...prev, ...newParts]);
@@ -515,188 +581,217 @@ export default function InteractiveTrain({ showControls = true }: InteractiveTra
   }, []);
 
   const handleModeChange = useCallback((mode: 'default' | 'random') => {
+    // A new layout starts fresh running trains (unless "Pause all" is on), so resume the
+    // ambient loop here, inside the click gesture, rather than waiting for the state effect.
+    const layoutChanges = mode === 'random' || trackMode !== mode;
     if (mode === 'random') setRandomTick(Date.now());
     writePreference('railway-track-mode', mode);
-  }, []);
+    if (layoutChanges && !controlsRef.current.allPaused && !reducedMotion) startAmbient();
+  }, [trackMode, reducedMotion, startAmbient]);
 
   const updateSvgRect = useCallback(() => {
     if (!svgRef.current) return;
     const rect = svgRef.current.getBoundingClientRect();
+    svgRectRef.current = { left: rect.left, top: rect.top, width: rect.width, height: rect.height };
     setSvgRect(previous => previous.left === rect.left && previous.top === rect.top && previous.width === rect.width && previous.height === rect.height
       ? previous : { left: rect.left, top: rect.top, width: rect.width, height: rect.height });
   }, []);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
-    
+
     const mainPath = mainPathRef.current;
-    const branchPath = branchPathRef.current;
+    const branchCandidates = branchPathsRef.current.filter((el): el is SVGPathElement => !!el && el.isConnected);
+    let branchPath: SVGPathElement | null = null;
     if (!mainPath) return;
-    
-    pathLength.current = mainPath.getTotalLength();
-    if (branchPath) branchLength.current = branchPath.getTotalLength();
-    totalLength.current = pathLength.current + branchLength.current;
 
-    const measureFrame = requestAnimationFrame(updateSvgRect);
-
-    // Closed loop: train completes full oval FIRST, then visits branch and returns
-    // Progress 0 → pathLength.main/total: traverse FULL main oval once
-    // Progress pathLength.main/total → 1: traverse branch OUT AND BACK
-    const ovalFraction = pathLength.current / totalLength.current;
-    
-    const getPointAtProgress = (p: number) => {
-      if (p <= 0 || p > 1) p = ((p % 1) + 1) % 1;
-      
-      if (p <= ovalFraction) {
-        // First phase: traverse the FULL main oval
-        const mainP = p / ovalFraction; // 0 → 1 maps to full oval traversal
-        const clampedP = Math.max(0, Math.min(1, mainP));
-        return { point: mainPath.getPointAtLength(clampedP * pathLength.current), onBranch: false };
-      } else if (branchPath) {
-        // Second phase: branch out AND back to close the loop
-        const branchP = (p - ovalFraction) / (1 - ovalFraction); // 0 → 1 = out, 1 → 0 = back
-        const pingPongP = 1 - Math.abs((branchP * 2) - 1); // 0→1→0 triangle wave
-        const clampedP = Math.max(0, Math.min(1, pingPongP));
-        return { point: branchPath.getPointAtLength(clampedP * branchLength.current), onBranch: true };
+    // Route: main loop to the junction, out along the branch and back, then the rest of the
+    // loop. Measured fresh for every layout, so a layout without a usable branch never keeps
+    // the previous layout's branch length (which used to park trains at the loop start).
+    const mainLength = mainPath.getTotalLength();
+    let route: Route = { mainLength, branchLength: 0, junction: 0 };
+    for (const candidate of branchCandidates) {
+      const branchLength = candidate.getTotalLength();
+      const start = candidate.getPointAtLength(0);
+      let best = Infinity, junction = 0;
+      for (let i = 0; i <= 400; i++) {
+        const at = (i / 400) * mainLength;
+        const pt = mainPath.getPointAtLength(at);
+        const d = Math.hypot(pt.x - start.x, pt.y - start.y);
+        if (d < best) { best = d; junction = at; }
       }
-      return { point: mainPath.getPointAtLength(0), onBranch: false };
+      // Only run onto a branch that actually leaves the loop; otherwise trains would teleport.
+      if (best <= 24 && branchLength > 0) { route = { mainLength, branchLength, junction }; branchPath = candidate; break; }
+    }
+    const total = routeLength(route);
+
+    const pointAt = (p: number) => {
+      const loc = locateOnRoute(route, p);
+      return loc.path === 'branch' && branchPath
+        ? branchPath.getPointAtLength(loc.at)
+        : mainPath.getPointAtLength(loc.at);
     };
 
-    // Update position of a specific train by index
-    const updatePosition = (idx: number, p: number, isRev = false) => {
-      const { point } = getPointAtProgress(p);
-      const delta = 0.003;
-      const { point: nextPoint } = getPointAtProgress(Math.min(p + delta, 0.9999));
-      const dx = nextPoint.x - point.x;
-      const dy = nextPoint.y - point.y;
-      let angle = Math.atan2(dy, dx) * (180 / Math.PI);
-      if (isRev) angle += 180;
+    const viewFor = (p: number): TrainView => {
+      const point = pointAt(p);
+      // Heading from a point a little further along the route (wraps cleanly at the end of a lap)
+      const ahead = pointAt(p + 3 / total);
+      const angle = Math.atan2(ahead.y - point.y, ahead.x - point.x) * (180 / Math.PI);
       const normalized = ((angle % 360) + 360) % 360;
-      const flipY = (normalized > 90 && normalized < 270) ? -1 : 1;
-      const scaleX = svgRect.width / 800;
-      const scaleY_factor = svgRect.height / 400;
-      const pixelX = point.x * scaleX;
-      const pixelY = point.y * scaleY_factor;
-      setTrainPos(prev => { const next = [...prev]; next[idx] = { x: pixelX, y: pixelY }; return next; });
-      setTrainAngle(prev => { const next = [...prev]; next[idx] = angle; return next; });
-      setTrainScaleX(prev => { const next = [...prev]; next[idx] = 1; return next; });
-      setTrainScaleY(prev => { const next = [...prev]; next[idx] = flipY; return next; });
-      
+      const rect = svgRectRef.current;
+      return {
+        x: point.x * (rect.width / 800),
+        y: point.y * (rect.height / 400),
+        angle,
+        flipY: normalized > 90 && normalized < 270 ? -1 : 1,
+      };
+    };
+
+    const publish = () => {
+      const views = progress.current.map(viewFor);
+      trainsRef.current = views;
+      setTrains(views);
+      const lead = movingLeadOf(views, controlsRef.current);
       const now = Date.now();
-      if (now - lastTrailTime.current > 80) {
+      if (lead && now - lastTrailTime.current > 80) {
         lastTrailTime.current = now;
         const id = ++trailId.current;
-        setTrail(t => [...t.slice(-25), { x: pixelX, y: pixelY, id }]);
+        setTrail(t => [...t.slice(-25), { x: lead.x, y: lead.y, id }]);
         setTimeout(() => setTrail(t => t.filter(i => i.id !== id)), 1200);
       }
     };
 
     let previousFrame = 0;
-    const animate = (timestamp = 0) => {
-      const frameScale = previousFrame ? Math.min(timestamp - previousFrame, 64) / (1000 / 60) : 1;
+    let lastRect = svgRectRef.current;
+    const animate = (timestamp: number) => {
+      const frameScale = frameScaleFor(previousFrame, timestamp);
       previousFrame = timestamp;
-      if (!isDragging) {
-        for (let i = 0; i < progress.current.length; i++) {
-          const speed = reducedMotion ? 0 : (0.00018 + i * 0.00007) * frameScale; // slightly different speeds so trains spread out
-          const prev = progress.current[i];
-          progress.current[i] = (progress.current[i] + speed) % 1;
-          const isRev = progress.current[i] < prev;
-          updatePosition(i, progress.current[i], isRev);
-        }
-      }
-      if (!reducedMotion) animFrame.current = requestAnimationFrame(animate);
+      const before = progress.current;
+      progress.current = stepProgress(before, {
+        frameScale,
+        globalSpeed: globalSpeedRef.current,
+        state: controlsRef.current,
+        reducedMotion: !!reducedMotion,
+        hold: dragIndexRef.current,
+      });
+      const moved = progress.current.some((p, i) => p !== before[i]);
+      // Skip re-rendering while everything is stopped, unless the track was resized.
+      if (moved || lastRect !== svgRectRef.current) { lastRect = svgRectRef.current; publish(); }
+      animFrame.current = requestAnimationFrame(animate);
+    };
+
+    const pointerPoint = (e: MouseEvent | TouchEvent) => {
+      const touch = "touches" in e ? e.touches[0] : null;
+      if ("touches" in e && !touch) return null;
+      return touch ? { x: touch.clientX, y: touch.clientY } : { x: (e as MouseEvent).clientX, y: (e as MouseEvent).clientY };
     };
 
     const handleMove = (e: MouseEvent | TouchEvent) => {
-      if (!isDragging) return;
+      const idx = dragIndexRef.current;
+      if (idx === null) return;
+      const at = pointerPoint(e);
       const svgEl = svgRef.current;
-      if (!svgEl) return;
+      if (!at || !svgEl) return;
       const rect = svgEl.getBoundingClientRect();
-      
-      const clientX = "touches" in e ? e.touches[0].clientX : e.clientX;
-      const clientY = "touches" in e ? e.touches[0].clientY : e.clientY;
-      
-      const mouseX = ((clientX - rect.left) / rect.width) * 800;
-      const mouseY = ((clientY - rect.top) / rect.height) * 400;
+      const mouseX = ((at.x - rect.left) / rect.width) * 800;
+      const mouseY = ((at.y - rect.top) / rect.height) * 400;
 
-      // Check which train is nearest the touch/mouse (only drag the first one)
-      let minDist = Infinity, bestP = progress.current[0];
+      let minDist = Infinity, bestP = progress.current[idx] ?? 0;
       for (let i = 0; i <= 300; i++) {
-        const p = i / 300;
-        const pt = mainPath.getPointAtLength(p * pathLength.current);
+        const along = (i / 300) * route.mainLength;
+        const pt = mainPath.getPointAtLength(along);
         const d = Math.hypot(mouseX - pt.x, mouseY - pt.y);
-        if (d < minDist) { minDist = d; bestP = p * (pathLength.current / totalLength.current); }
+        if (d < minDist) { minDist = d; bestP = progressForRoutePoint(route, { path: 'main', at: along }); }
       }
-      if (branchPath) {
+      if (branchPath && route.branchLength > 0) {
         for (let i = 0; i <= 150; i++) {
-          const p = i / 150;
-          const pt = branchPath.getPointAtLength(p * branchLength.current);
+          const along = (i / 150) * route.branchLength;
+          const pt = branchPath.getPointAtLength(along);
           const d = Math.hypot(mouseX - pt.x, mouseY - pt.y);
-          if (d < minDist) { minDist = d; bestP = (pathLength.current / totalLength.current) + (p * (branchLength.current / totalLength.current)); }
+          if (d < minDist) { minDist = d; bestP = progressForRoutePoint(route, { path: 'branch', at: along }); }
         }
       }
-      progress.current[0] = Math.max(0.001, Math.min(0.999, bestP));
-      updatePosition(0, progress.current[0]);
-      if (!visible) setVisible(true);
+      const next = [...progress.current];
+      next[idx] = bestP;
+      progress.current = next;
+      publish();
     };
 
     const handleDown = (e: MouseEvent | TouchEvent) => {
-      // Don't drag if touch landed on a signal button
+      // Don't drag from controls, links, dialogs or the nav bar
       const target = e.target as HTMLElement;
-      if (target.closest('button, a, input, select, textarea, [role=dialog]')) return;
-
-      if (!trainRef.current) return;
-      const rect = trainRef.current.getBoundingClientRect();
-      const clientX = "touches" in e ? e.touches[0].clientX : e.clientX;
-      const clientY = "touches" in e ? e.touches[0].clientY : e.clientY;
-      const dist = Math.hypot(clientX - (rect.left + rect.width / 2), clientY - (rect.top + rect.height / 2));
-      if (dist < 120) {
-        setIsDragging(true);
-        if (!isMutedRef.current) {
-          const a = new Audio("/sounds/train-move.mp3");
-          a.volume = 0.2; a.play().catch(() => {});
-          const w = new Audio("/sounds/cta-whistle.mp3");
-          w.volume = 0.08; w.play().catch(() => {});
-        }
-        const rad = (trainAngleRef.current[0] * Math.PI) / 180;
-        const smokeX = trainPosRef.current[0].x + Math.cos(rad) * 22;
-        const smokeY = trainPosRef.current[0].y + Math.sin(rad) * 22 - 20;
-        const newParts: Array<{ id: number; x: number; y: number; age: number }> = [];
-        for (let i = 0; i < 10; i++) newParts.push({ id: ++smokeId.current, x: smokeX, y: smokeY, age: 0 });
-        setSmokeParticles(prev => [...prev, ...newParts]);
+      if (target.closest('button, a, input, select, textarea, label, summary, nav, [role=dialog]')) return;
+      const at = pointerPoint(e);
+      if (!at) return;
+      // Grab the nearest train, and only when the pointer is actually on it, so scrolling the
+      // page past a train no longer stops anything.
+      let nearest = -1, nearestDist = Infinity;
+      const rect = svgRectRef.current;
+      trainsRef.current.forEach((t, i) => {
+        const d = Math.hypot(at.x - (rect.left + t.x), at.y - (rect.top + t.y));
+        if (d < nearestDist) { nearestDist = d; nearest = i; }
+      });
+      if (nearest < 0 || nearestDist > 48) return;
+      dragIndexRef.current = nearest;
+      setDragIndex(nearest);
+      if (!isMutedRef.current) {
+        const a = new Audio("/sounds/train-move.mp3");
+        a.volume = 0.2; a.play().catch(() => {});
+        const w = new Audio("/sounds/cta-whistle.mp3");
+        w.volume = 0.08; w.play().catch(() => {});
       }
+      const t = trainsRef.current[nearest];
+      const rad = (t.angle * Math.PI) / 180;
+      const newParts: Array<{ id: number; x: number; y: number; age: number }> = [];
+      for (let i = 0; i < 10; i++) newParts.push({ id: ++smokeId.current, x: t.x + Math.cos(rad) * 22, y: t.y + Math.sin(rad) * 22 - 20, age: 0 });
+      setSmokeParticles(prev => [...prev, ...newParts]);
     };
 
-    const handleUp = () => setIsDragging(false);
+    // Every way a press can end releases the train; a missed release used to freeze all trains.
+    const handleUp = () => {
+      if (dragIndexRef.current === null) return;
+      dragIndexRef.current = null;
+      setDragIndex(null);
+    };
 
-    const resizeObserver = new ResizeObserver(() => updateSvgRect());
+    // The running loop picks up a new size itself; with reduced motion there is no loop, so re-place here.
+    const onResize = () => { updateSvgRect(); if (reducedMotion) publish(); };
+    const resizeObserver = new ResizeObserver(onResize);
     if (svgRef.current) resizeObserver.observe(svgRef.current);
-    window.addEventListener('resize', updateSvgRect, { passive: true });
+    window.addEventListener('resize', onResize, { passive: true });
     window.addEventListener('scroll', updateSvgRect, { passive: true });
 
-    animFrame.current = requestAnimationFrame(() => { setVisible(true); animate(); });
+    // First placement on the next frame (also the only placement when motion is reduced)
+    const firstFrame = requestAnimationFrame(() => {
+      updateSvgRect();
+      publish();
+      setVisible(true);
+      if (!reducedMotion) animFrame.current = requestAnimationFrame(animate);
+    });
 
+    const releaseEvents = ["mouseup", "touchend", "touchcancel", "blur"] as const;
     window.addEventListener("mousemove", handleMove, { passive: true });
     window.addEventListener("touchmove", handleMove, { passive: true });
     window.addEventListener("mousedown", handleDown);
-    window.addEventListener("touchstart", handleDown);
-    window.addEventListener("mouseup", handleUp);
-    window.addEventListener("touchend", handleUp);
+    window.addEventListener("touchstart", handleDown, { passive: true });
+    releaseEvents.forEach(ev => window.addEventListener(ev, handleUp));
+    document.addEventListener("visibilitychange", handleUp);
 
     return () => {
       window.removeEventListener("mousemove", handleMove);
       window.removeEventListener("touchmove", handleMove);
       window.removeEventListener("mousedown", handleDown);
       window.removeEventListener("touchstart", handleDown);
-      window.removeEventListener("mouseup", handleUp);
-      window.removeEventListener("touchend", handleUp);
-      window.removeEventListener("resize", updateSvgRect);
+      releaseEvents.forEach(ev => window.removeEventListener(ev, handleUp));
+      document.removeEventListener("visibilitychange", handleUp);
+      window.removeEventListener("resize", onResize);
       window.removeEventListener("scroll", updateSvgRect);
       resizeObserver.disconnect();
+      cancelAnimationFrame(firstFrame);
       cancelAnimationFrame(animFrame.current);
-      cancelAnimationFrame(measureFrame);
+      dragIndexRef.current = null;
     };
-  }, [isDragging, visible, svgRect, trackMode, randomTick, numTrains, reducedMotion, updateSvgRect]);
+  }, [trackMode, randomTick, numTrains, reducedMotion, updateSvgRect]);
 
   // Tap-through signals: only when the tap did not land on a link, control or dialog.
   useEffect(() => {
@@ -716,7 +811,104 @@ export default function InteractiveTrain({ showControls = true }: InteractiveTra
   // Always use the first path as main (it's always a closed oval in every layout)
   // Branch = first branch-type path that differs from main, else undefined
   const mainTrackPath = trackParts[0]?.path || '';
-  const branchTrackPath = trackParts.find(p => p.type === 'branch' && p.path !== mainTrackPath)?.path || '';
+  // Every branch candidate is measured; the first one whose start touches the main loop is used.
+  const branchTrackPaths = trackParts.filter(p => p.type === 'branch' && p.path && p.path !== mainTrackPath).map(p => p.path);
+
+  const formatSpeed = (value: number) => `${Number(value.toFixed(2))}×`;
+  const controlsUi = (
+    <div className={`train-controls ${navSlot ? 'in-nav' : 'floating'}`}
+>
+      <button ref={panelToggleRef} type="button" className="train-controls-toggle"
+        aria-expanded={panelOpen} aria-controls="train-controls-panel"
+        aria-label={`Train controls${allStopped ? ' (paused)' : ''}`} title="Train controls"
+        onClick={() => setPanelOpen(open => !open)}>
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+          <rect x="5" y="3" width="14" height="13" rx="3"/><path d="M5 10h14M9 20l-2 2M15 20l2 2"/><circle cx="9" cy="13" r="0.6" fill="currentColor"/><circle cx="15" cy="13" r="0.6" fill="currentColor"/>
+        </svg>
+        <span className="train-controls-toggle-label">Trains</span>
+        {allStopped && <span className="train-controls-dot" aria-hidden="true"/>}
+      </button>
+      {panelOpen && (
+        <div id="train-controls-panel" role="group" aria-labelledby="train-controls-title" className="track-mode-selector">
+          <div className="train-controls-row">
+            <span id="train-controls-title" className="train-controls-title">Train controls</span>
+            <button type="button" className="track-mode-btn default" autoFocus onClick={closePanel}>
+              Close
+            </button>
+          </div>
+          <div className="train-controls-row">
+            <button type="button" className={`track-mode-btn default ${allStopped ? 'active' : ''}`}
+              aria-pressed={allStopped} disabled={!!reducedMotion} onClick={() => updateControls(pauseAll)}>
+              Pause all
+            </button>
+            <button type="button" className="track-mode-btn default"
+              disabled={!!reducedMotion} onClick={() => { updateControls(runAll); startAmbient(); }}>
+              Run all
+            </button>
+          </div>
+          <div className="train-controls-row">
+            <label htmlFor="train-speed">Speed (all)</label>
+            <input id="train-speed" type="range" className="train-controls-speed"
+              min={0.5} max={2} step={0.25} value={globalSpeed} disabled={!!reducedMotion}
+              aria-valuetext={formatSpeed(globalSpeed)} onChange={e => changeGlobalSpeed(Number(e.target.value))} />
+            <span aria-hidden="true" className="train-controls-value">{formatSpeed(globalSpeed)}</span>
+          </div>
+          {reducedMotion && (
+            <p className="train-controls-note">Trains are still and speed is disabled because your device is set to reduce motion.</p>
+          )}
+          <details className="train-controls-trains">
+            <summary>Individual trains ({controlState.trains.length})</summary>
+            <ul>
+              {controlState.trains.map((train, i) => {
+                const moving = isTrainMoving(controlState, i);
+                const name = `Train ${i + 1}`;
+                return (
+                  <li key={i} className="train-controls-row">
+                    <span className="train-controls-name">{name}</span>
+                    <button type="button" className={`track-mode-btn default ${moving ? '' : 'active'}`}
+                      aria-pressed={!moving} aria-label={`${moving ? 'Pause' : 'Run'} ${name}`}
+                      disabled={!!reducedMotion} onClick={() => { updateControls(state => toggleTrain(state, i)); if (!moving) startAmbient(); }}>
+                      {moving ? 'Pause' : 'Run'}
+                    </button>
+                    <input type="range" className="train-controls-speed small" aria-label={`${name} speed`}
+                      min={0.5} max={2} step={0.25} value={train.speed} disabled={!!reducedMotion}
+                      aria-valuetext={`${formatSpeed(train.speed)}, effective ${formatSpeed(effectiveSpeed(globalSpeed, train.speed))}`}
+                      onChange={e => { const value = Number(e.target.value); updateControls(state => setTrainSpeed(state, i, value)); }} />
+                    <span aria-hidden="true" className="train-controls-value">{formatSpeed(train.speed)}</span>
+                  </li>
+                );
+              })}
+            </ul>
+            <p className="train-controls-note">Each train runs at Speed (all) × its own speed.</p>
+          </details>
+          <div className="train-controls-row">
+            <button type="button" className={`track-mode-btn default ${!isMuted ? 'active' : ''}`}
+              aria-pressed={!isMuted} onClick={() => setIsMuted(!isMuted)}>
+              {isMuted ? 'Sound: muted' : 'Sound: on'}
+            </button>
+            <span>Track</span>
+            <button type="button"
+              aria-pressed={trackMode === 'default'}
+              className={`track-mode-btn default ${trackMode === 'default' ? 'active' : ''}`}
+              onClick={() => handleModeChange('default')}
+            >
+              Layout
+            </button>
+            <button type="button"
+              aria-pressed={trackMode === 'random'}
+              className={`track-mode-btn random ${trackMode === 'random' ? 'active' : ''}`}
+              onClick={() => handleModeChange('random')}
+            >
+              Random
+            </button>
+          </div>
+          <p className="train-controls-note" aria-live="polite">
+            Signals: {signalPositions.map((sig, i) => `S${i + 1} ${activeSignals.has(sig.id) ? 'Proceed' : 'Stop'}`).join(' · ')}
+          </p>
+        </div>
+      )}
+    </div>
+  );
 
   return (
     <>
@@ -770,22 +962,52 @@ export default function InteractiveTrain({ showControls = true }: InteractiveTra
           height: min(47.5vw, 600px);
           opacity: 0.45;
         }
+        /* In the nav the panel is positioned against the nav bar itself (static wrapper), so it
+           spans the bar's width on phones instead of hanging off the button. */
+        .train-controls { position: static; flex-shrink: 0; }
+        .train-controls.floating { position: fixed; bottom: 16px; right: 16px; z-index: 9990; }
+        .train-controls-toggle {
+          display: inline-flex; align-items: center; gap: 6px;
+          min-height: 40px; padding: 8px 10px;
+          border-radius: 12px; border: 1px solid rgba(212, 168, 67, 0.3);
+          background: rgba(212, 168, 67, 0.08); color: #d4a843;
+          font: inherit; font-size: 11px; font-weight: 700; letter-spacing: 0.05em; text-transform: uppercase;
+          cursor: pointer; position: relative; transition: background 0.2s;
+        }
+        .train-controls-toggle:hover, .train-controls-toggle[aria-expanded="true"] { background: rgba(212, 168, 67, 0.18); }
+        .train-controls-toggle:focus-visible { outline: 2px solid #d4a843; outline-offset: 2px; }
+        .train-controls-dot { position: absolute; top: 5px; right: 5px; width: 7px; height: 7px; border-radius: 50%; background: #ef4444; }
+        @media (max-width: 479px) { .train-controls-toggle-label { display: none; } }
         .track-mode-selector {
           position: fixed;
-          bottom: 24px; right: 24px;
-          z-index: 9990;
+          z-index: 9999;
           display: flex;
           flex-direction: column;
-          gap: 4px;
-          padding: 6px;
-          background: rgba(10, 13, 21, 0.9);
+          gap: 8px;
+          padding: 10px 6px;
+          width: min(360px, calc(100vw - 24px));
+          overflow-y: auto;
+          overscroll-behavior: contain;
+          color: rgba(212, 168, 67, 0.75);
+          font-size: 11px;
+          text-align: left;
+          background: rgba(10, 13, 21, 0.96);
           backdrop-filter: blur(12px);
           border: 1px solid rgba(212, 168, 67, 0.25);
           border-radius: 14px;
-          box-shadow: 0 4px 20px rgba(0,0,0,0.5);
+          box-shadow: 0 8px 28px rgba(0,0,0,0.6);
         }
+        /* Drops down under the nav bar, like the mobile menu, and only while open */
+        .train-controls.in-nav .track-mode-selector {
+          position: absolute;
+          top: calc(100% + 10px);
+          right: max(12px, calc((100% - 72rem) / 2 + 16px));
+          max-height: calc(100dvh - var(--banner-h, 0px) - 96px);
+        }
+        .train-controls.floating .track-mode-selector { right: 0; bottom: calc(100% + 8px); max-height: calc(100dvh - 140px); }
         .track-mode-btn {
-          padding: 8px 16px;
+          padding: 8px 14px;
+          min-height: 34px;
           font-size: 11px; font-weight: 700;
           letter-spacing: 0.05em; text-transform: uppercase;
           border-radius: 10px; border: none;
@@ -804,9 +1026,34 @@ export default function InteractiveTrain({ showControls = true }: InteractiveTra
           color: #d4a843;
           box-shadow: inset 0 1px 0 rgba(255,255,255,0.1), 0 0 12px rgba(212, 168, 67, 0.2);
         }
-        .track-mode-btn:hover:not(.active) {
+        .track-mode-btn:hover:not(.active):not(:disabled) {
           color: rgba(212, 168, 67, 0.9);
           background: rgba(212, 168, 67, 0.08);
+        }
+        .track-mode-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+        .track-mode-selector button:focus-visible, .track-mode-selector input:focus-visible, .track-mode-selector summary:focus-visible {
+          outline: 2px solid #d4a843;
+          outline-offset: 2px;
+        }
+        .train-controls-row { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; padding: 0 6px; }
+        .train-controls-title { font-weight: 700; letter-spacing: 0.05em; text-transform: uppercase; color: #d4a843; flex: 1; }
+        .train-controls-note { padding: 0 6px; margin: 0; color: rgba(212, 168, 67, 0.6); }
+        .train-controls-speed { accent-color: #d4a843; width: 120px; flex: 1 1 100px; max-width: 160px; }
+        .train-controls-speed.small { width: 90px; flex: 1 1 80px; }
+        .train-controls-value { min-width: 34px; text-align: right; font-variant-numeric: tabular-nums; }
+        .train-controls-trains { border-top: 1px solid rgba(212, 168, 67, 0.15); border-bottom: 1px solid rgba(212, 168, 67, 0.15); padding: 6px 0; }
+        .train-controls-trains summary {
+          cursor: pointer; padding: 6px; border-radius: 8px;
+          font-weight: 700; letter-spacing: 0.05em; text-transform: uppercase; color: #d4a843;
+        }
+        .train-controls-trains ul { list-style: none; margin: 4px 0; padding: 0; display: flex; flex-direction: column; gap: 6px; max-height: 200px; overflow-y: auto; }
+        .train-controls-trains li { flex-wrap: nowrap; }
+        .train-controls-name { min-width: 52px; font-weight: 700; color: #d4a843; white-space: nowrap; }
+        .train-number {
+          position: absolute; z-index: 4; transform: translate(-50%, -50%);
+          min-width: 16px; height: 16px; padding: 0 4px; border-radius: 8px;
+          font: 700 10px/16px 'Courier New', monospace; text-align: center;
+          color: #0a0d15; background: #d4a843; pointer-events: none; transition: opacity 0.5s;
         }
         .station-label {
           position: absolute;
@@ -820,25 +1067,8 @@ export default function InteractiveTrain({ showControls = true }: InteractiveTra
         }
       `}</style>
 
-      {/* Track mode selector — hidden when used as decorative background */}
-      {showControls && (
-      <div className="track-mode-selector">
-        <button 
-          aria-pressed={trackMode === 'default'}
-          className={`track-mode-btn default ${trackMode === 'default' ? 'active' : ''}`}
-          onClick={() => handleModeChange('default')}
-        >
-          Layout
-        </button>
-        <button 
-          aria-pressed={trackMode === 'random'}
-          className={`track-mode-btn random ${trackMode === 'random' ? 'active' : ''}`}
-          onClick={() => handleModeChange('random')}
-        >
-          Random
-        </button>
-      </div>
-      )}
+      {/* Train controls — in the nav bar slot when the page has one; hidden in decorative mode */}
+      {showControls && hydrated && (navSlot ? createPortal(controlsUi, navSlot) : controlsUi)}
 
       {/* Track path - behind everything */}
       <div className="track-container">
@@ -871,7 +1101,7 @@ export default function InteractiveTrain({ showControls = true }: InteractiveTra
                   <path d={part.path} fill="none" stroke="#252530" strokeWidth={sw - 4} strokeLinecap="round" strokeLinejoin="round"/>
                   {/* Golden running rail with glow */}
                   <path d={part.path} fill="none" stroke={railColor} strokeWidth="2" strokeDasharray="12,10" strokeLinecap="round" opacity="0.9" filter="url(#railGlow)">
-                    {idx === 0 && <animate attributeName="stroke-dashoffset" from="0" to="-44" dur="2.5s" repeatCount="indefinite"/>}
+                    {idx === 0 && !reducedMotion && <animate attributeName="stroke-dashoffset" from="0" to="-44" dur={`${(2.5 / globalSpeed).toFixed(2)}s`} repeatCount="indefinite"/>}
                   </path>
                 </g>
               );
@@ -923,7 +1153,7 @@ export default function InteractiveTrain({ showControls = true }: InteractiveTra
             ))}
 
             {/* Signal visuals (visual only — interactions via HTML buttons below) */}
-            {signalPositions.map(sig => {
+            {signalPositions.map((sig, i) => {
               const active = activeSignals.has(sig.id);
               return (
                 <g key={`sig-vis-${sig.id}`}>
@@ -931,15 +1161,18 @@ export default function InteractiveTrain({ showControls = true }: InteractiveTra
                   <circle cx={sig.x} cy={sig.y} r="9" fill={active ? '#22c55e' : '#ef4444'} opacity={active ? 1 : 0.85}
                     style={{ filter: active ? 'drop-shadow(0 0 7px #22c55e)' : 'drop-shadow(0 0 5px #ef4444)' }} pointerEvents="none" />
                   {active && <circle cx={sig.x} cy={sig.y} r="14" fill="none" stroke="#22c55e" strokeWidth="2" opacity="0.4" pointerEvents="none" />}
+                  <text x={sig.x + 14} y={sig.y + 3} fill={active ? '#22c55e' : '#ef4444'} fontSize="8" fontFamily="'Courier New', monospace" fontWeight="bold" pointerEvents="none">
+                    {`S${i + 1} ${active ? 'Proceed' : 'Stop'}`}
+                  </text>
                 </g>
               );
             })}
 
             {/* Hidden main path for train interaction — pointerEvents="none" so clicks pass through to signals beneath */}
             <path ref={mainPathRef} d={mainTrackPath} fill="none" stroke="transparent" strokeWidth="50" pointerEvents="none"/>
-            {branchTrackPath && (
-              <path ref={branchPathRef} d={branchTrackPath} fill="none" stroke="transparent" strokeWidth="40" pointerEvents="none"/>
-            )}
+            {branchTrackPaths.map((d, i) => (
+              <path key={i} ref={el => { branchPathsRef.current[i] = el; }} d={d} fill="none" stroke="transparent" strokeWidth="40" pointerEvents="none"/>
+            ))}
           </svg>
 
           {/* Signal toggle buttons — handle touch directly to avoid click延迟 on iOS */}
@@ -987,19 +1220,23 @@ export default function InteractiveTrain({ showControls = true }: InteractiveTra
             />
           ))}
 
-          {/* Train cursors — one per train, only first is draggable */}
-          {trainPos.map((pos, i) => (
+          {/* Train cursors — one per train on the current layout; any train can be dragged */}
+          {trains.slice(0, numTrains).map((pos, i) => (
+          <div key={i}>
+          {showControls && numTrains > 1 && (
+            <span className="train-number" aria-hidden="true"
+              style={{ left: pos.x, top: pos.y - 24, opacity: visible ? 0.85 : 0 }}>{i + 1}</span>
+          )}
           <div
-            key={i}
             ref={i === 0 ? trainRef : undefined}
             className="train-cursor"
             style={{
               left: pos.x,
               top: pos.y,
               opacity: visible ? (i === 0 ? 0.7 : 0.55) : 0,
-              transform: `translate(-50%, -50%) rotate(${trainAngle[i] || 0}deg) scale(${trainScaleX[i] || 1}, ${trainScaleY[i] || 1})`,
-              // Don't block signal taps when not dragging — window-level handleDown handles drag detection
-              pointerEvents: (isDragging && i === 0) ? 'all' : 'none',
+              transform: `translate(-50%, -50%) rotate(${pos.angle}deg) scale(1, ${pos.flipY})`,
+              // Never blocks taps; window-level handlers do drag detection
+              pointerEvents: dragIndex === i ? 'all' : 'none',
             }}
           >
             <svg viewBox="0 0 70 30" fill="none">
@@ -1069,6 +1306,7 @@ export default function InteractiveTrain({ showControls = true }: InteractiveTra
                 </linearGradient>
               </defs>
             </svg>
+          </div>
           </div>
           ))}
         </div>
