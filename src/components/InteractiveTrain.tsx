@@ -16,6 +16,11 @@ interface TrainView { x: number; y: number; angle: number; flipY: number }
 
 const subscribeNoop = () => () => {};
 const leadOf = (list: TrainView[]): TrainView => list[0] ?? { x: 0, y: 0, angle: 0, flipY: 1 };
+// Smoke and whistles come from a train that is actually moving, never from a paused one.
+const movingLeadOf = (list: TrainView[], state: TrainControlState): TrainView | null => {
+  const i = list.findIndex((_, idx) => isTrainMoving(state, idx));
+  return i >= 0 ? list[i] : null;
+};
 
 // ============================================
 // REAL 00 GAUGE (4mm/ft) TRACK SPECIFICATIONS
@@ -367,6 +372,13 @@ export default function InteractiveTrain({ showControls = true }: InteractiveTra
   const [panelOpen, setPanelOpen] = useState(false);
   const panelToggleRef = useRef<HTMLButtonElement>(null);
   const closePanel = useCallback(() => { setPanelOpen(false); panelToggleRef.current?.focus(); }, []);
+  // Escape closes the panel wherever focus is, not only while it sits inside the panel.
+  useEffect(() => {
+    if (!panelOpen) return;
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') closePanel(); };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [panelOpen, closePanel]);
   // The pages put an empty slot in their nav bar; the controls render there so they never float over content.
   const navSlot = useSyncExternalStore(subscribeNoop,
     () => document.getElementById('train-controls-slot'), () => null);
@@ -414,9 +426,10 @@ export default function InteractiveTrain({ showControls = true }: InteractiveTra
       startAmbient();
       if (hasInteractedRef.current) return;
       hasInteractedRef.current = true;
-      const rad = (leadOf(trainsRef.current).angle * Math.PI) / 180;
-      const px = leadOf(trainsRef.current).x + Math.cos(rad) * 22;
-      const py = leadOf(trainsRef.current).y + Math.sin(rad) * 22 - 20;
+      const lead = movingLeadOf(trainsRef.current, controlsRef.current) ?? leadOf(trainsRef.current);
+      const rad = (lead.angle * Math.PI) / 180;
+      const px = lead.x + Math.cos(rad) * 22;
+      const py = lead.y + Math.sin(rad) * 22 - 20;
       const newParts: Array<{ id: number; x: number; y: number; age: number }> = [];
       for (let i = 0; i < 10; i++) newParts.push({ id: ++smokeId.current, x: px, y: py, age: 0 });
       setSmokeParticles(prev => [...prev, ...newParts]);
@@ -541,11 +554,13 @@ export default function InteractiveTrain({ showControls = true }: InteractiveTra
     if (typeof window === "undefined") return;
 
     const doAutoWhistle = () => {
-      if (isMutedRef.current || !anyMovingRef.current || !hasInteractedRef.current || document.hidden) return;
-      const rad = (leadOf(trainsRef.current).angle * Math.PI) / 180;
+      if (isMutedRef.current || !hasInteractedRef.current || document.hidden) return;
+      const lead = movingLeadOf(trainsRef.current, controlsRef.current);
+      if (!lead) return;
+      const rad = (lead.angle * Math.PI) / 180;
       const aheadDist = 22, smokeRise = 20;
-      const px = leadOf(trainsRef.current).x + Math.cos(rad) * aheadDist;
-      const py = leadOf(trainsRef.current).y + Math.sin(rad) * aheadDist - smokeRise;
+      const px = lead.x + Math.cos(rad) * aheadDist;
+      const py = lead.y + Math.sin(rad) * aheadDist - smokeRise;
       const newParts: Array<{ id: number; x: number; y: number; age: number }> = [];
       for (let i = 0; i < 10; i++) newParts.push({ id: ++smokeId.current, x: px, y: py, age: 0 });
       setSmokeParticles(prev => [...prev, ...newParts]);
@@ -798,7 +813,7 @@ export default function InteractiveTrain({ showControls = true }: InteractiveTra
   const formatSpeed = (value: number) => `${Number(value.toFixed(2))}×`;
   const controlsUi = (
     <div className={`train-controls ${navSlot ? 'in-nav' : 'floating'}`}
-      onKeyDown={e => { if (e.key === 'Escape' && panelOpen) { e.stopPropagation(); closePanel(); } }}>
+>
       <button ref={panelToggleRef} type="button" className="train-controls-toggle"
         aria-expanded={panelOpen} aria-controls="train-controls-panel"
         aria-label={`Train controls${allStopped ? ' (paused)' : ''}`} title="Train controls"
