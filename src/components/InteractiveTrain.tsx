@@ -393,6 +393,12 @@ export default function InteractiveTrain({ showControls = true }: InteractiveTra
       return next;
     });
   }, []);
+  // Stable handler for the keyboard-accessible signal buttons; reads the id from the
+  // element so no ref-reading callback is created during render (react-hooks/refs).
+  const handleSignalButtonClick = useCallback((e: React.MouseEvent<HTMLButtonElement>) => {
+    const id = e.currentTarget.dataset.signalId;
+    if (id) toggleSignal(id);
+  }, [toggleSignal]);
   const unmutedAtRef = useRef(0);
   // Starts/resumes the ambient loop. Must be called from inside a user gesture.
   const startAmbient = useCallback(() => {
@@ -1183,7 +1189,8 @@ export default function InteractiveTrain({ showControls = true }: InteractiveTra
             return (
               <button type="button" key={`sig-btn-${sig.id}`}
                 data-signal-btn="true"
-                onClick={() => toggleSignal(sig.id)}
+                data-signal-id={sig.id}
+                onClick={handleSignalButtonClick}
                 style={{
                   position: 'fixed',
                   left: svgRect.left + sig.x / 800 * svgRect.width,
